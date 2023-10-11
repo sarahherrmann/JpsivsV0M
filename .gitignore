@@ -1,0 +1,9 @@
+*.xml
+*.d
+*.so
+*.pcm
+*.root
+*.sh
+*.jdl
+myAnalysis.C
+myTask_merge.C
