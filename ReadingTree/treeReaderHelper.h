@@ -20,7 +20,7 @@ class treeReaderHelper
      fMuonEta = new TH1D("fMuonEta","fMuonEta",50,-4,-2.5);
      fMuonPhi = new TH1D("fMuonPhi","fMuonPhi",100,0,2*TMath::Pi());
 
-     fNV0OverNV0Mean = new TH1F("fNV0OverNV0Mean","fNV0OverNV0Mean",1500,0,15);
+     fNV0OverNV0Mean = new TH1F("fNV0OverNV0Mean","fNV0OverNV0Mean",5000,0,50);
 
      for (int ichannel=0; ichannel<64; ichannel++)//can be reduced to 32, only V0C
      {
@@ -86,6 +86,11 @@ class treeReaderHelper
    //Tree branches for fTreeINT7:
    Float_t fv0multTotINT7;  //! total multiplicity in V0
    Float_t fv0multCorrINT7;  //! total corrected multiplicity in V0
+   Double_t fv0mpercentile7; //!
+   Double_t fv0apercentile7; //!
+   Double_t fv0cpercentile7; //!
+   Double_t fcl1percentile7; //!
+   Double_t fspdpercentile7; //!
 
    //histograms filled in kINT7 events:
    TH1F* hV0MultTot;        //! total multiplicity in the whole V0

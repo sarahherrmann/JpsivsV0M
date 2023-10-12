@@ -52,6 +52,11 @@ void treeReaderHelper::SetTreeAddresses(TTree *trDiMu, TTree *trSingleMu, TTree 
 
   trInt7->SetBranchAddress("fv0multTotINT7",&fv0multTotINT7);
   trInt7->SetBranchAddress("fv0multCorrINT7",&fv0multCorrINT7);
+  // trInt7->SetBranchAddress("fv0mpercentile7",&fv0mpercentile7);
+  // trInt7->SetBranchAddress("fv0apercentile7",&fv0apercentile7);
+  // trInt7->SetBranchAddress("fv0cpercentile7",&fv0cpercentile7);
+  // trInt7->SetBranchAddress("fcl1percentile7",&fcl1percentile7);
+  // trInt7->SetBranchAddress("fspdpercentile7",&fspdpercentile7);
 }
 
 void treeReaderHelper::GetNV0Histogram(TList *histoList, TTree *trInt7)

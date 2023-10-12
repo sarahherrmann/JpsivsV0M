@@ -70,6 +70,11 @@ class AliAnaTaskJpsiVsV0M : public AliAnalysisTaskSE
         //Tree branches for fTreeINT7:
         Float_t fv0multTotINT7;  //! total multiplicity in V0
         Float_t fv0multCorrINT7;  //! total corrected multiplicity in V0
+        Double_t fv0mpercentile7; //!
+        Double_t fv0apercentile7; //!
+        Double_t fv0cpercentile7; //!
+        Double_t fcl1percentile7; //!
+        Double_t fspdpercentile7; //!
 
         //histograms filled in kINT7 events:
         TH1F* hV0MultTot;        //! total multiplicity in the whole V0

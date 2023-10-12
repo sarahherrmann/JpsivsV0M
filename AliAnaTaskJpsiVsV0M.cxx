@@ -62,6 +62,11 @@ AliAnaTaskJpsiVsV0M::AliAnaTaskJpsiVsV0M() : AliAnalysisTaskSE(),
     fv0cpercentile(-1.),
     fcl1percentile(-1.),
     fspdpercentile(-1.),
+    fv0mpercentile7(-1.),
+    fv0apercentile7(-1.),
+    fv0cpercentile7(-1.),
+    fcl1percentile7(-1.),
+    fspdpercentile7(-1.),
     fUtils(0x0),
     fzvtx(0.),
     ftracksmu(0x0),
@@ -102,6 +107,11 @@ AliAnaTaskJpsiVsV0M::AliAnaTaskJpsiVsV0M(const char* name) : AliAnalysisTaskSE(n
     fv0cpercentile(-1.),
     fcl1percentile(-1.),
     fspdpercentile(-1.),
+    fv0mpercentile7(-1.),
+    fv0apercentile7(-1.),
+    fv0cpercentile7(-1.),
+    fcl1percentile7(-1.),
+    fspdpercentile7(-1.),
     fUtils(0x0),
     fzvtx(0.),
     ftracksmu(0x0),
@@ -235,6 +245,11 @@ void AliAnaTaskJpsiVsV0M::SetTreeINT7(TTree *tr)
 {
   tr->Branch("fv0multTotINT7",&fv0multTotINT7,"fv0multTotINT7/F");
   tr->Branch("fv0multCorrINT7",&fv0multCorrINT7,"fv0multCorrINT7/F");
+  tr->Branch("fv0mpercentile7",&fv0mpercentile7);
+  tr->Branch("fv0apercentile7",&fv0apercentile7);
+  tr->Branch("fv0cpercentile7",&fv0cpercentile7);
+  tr->Branch("fcl1percentile7",&fcl1percentile7);
+  tr->Branch("fspdpercentile7",&fspdpercentile7);
 }
 //==============================================================================
 void AliAnaTaskJpsiVsV0M::GetAcceptedTracksMuonArm(AliAODEvent *aodEvent)
@@ -296,6 +311,7 @@ void AliAnaTaskJpsiVsV0M::UserExec(Option_t *)
 
     if(!fAOD) return;                                   // if the pointer to the event is empty (getting it failed) skip this event
 
+
     fRunN = fAOD->GetRunNumber();//will get filled into the tree after
 
     Bool_t isSingleMuonEvent = (((AliInputEventHandler*)(AliAnalysisManager::GetAnalysisManager()->GetInputEventHandler()))->IsEventSelected() & AliVEvent::kMuonSingleLowPt7);
@@ -318,6 +334,20 @@ void AliAnaTaskJpsiVsV0M::UserExec(Option_t *)
     {
       //removing pileup
       return;
+    }
+
+    //other pileup selection: from Christiane's task
+
+    if(fAOD->IsPileupFromSPDInMultBins())
+    {
+        //This event is pileUp from AOD
+        return;
+    }
+
+    if(fUtils->IsPileUpEvent(fAOD))
+    {
+        //This event is pileUp
+        return;
     }
 
     percentile = multSelection->GetMultiplicityPercentile(fCentMethod.Data());
@@ -414,6 +444,12 @@ void AliAnaTaskJpsiVsV0M::UserExec(Option_t *)
 
     if (iskINT7Event)
     {
+      fv0mpercentile7 = multSelection->GetMultiplicityPercentile("V0M");
+      fv0apercentile7 = multSelection->GetMultiplicityPercentile("V0A");
+      fv0cpercentile7 = multSelection->GetMultiplicityPercentile("V0C");
+      fcl1percentile7 = multSelection->GetMultiplicityPercentile("SPDClusters");
+      fspdpercentile7 = multSelection->GetMultiplicityPercentile("SPDTracklets");
+
       //-------------------------- V0 multiplicity -------------------------------
       AliAODVZERO *vzeroAOD = dynamic_cast<AliAODVZERO *>( dynamic_cast<AliAODEvent *>(fAOD)->GetVZEROData());
       Float_t V0AMult = vzeroAOD->GetMTotV0A();

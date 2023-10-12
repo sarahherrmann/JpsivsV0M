@@ -129,8 +129,8 @@ void runAnalysisONGRID_full(const char *fperiod = "18b", Int_t subset = 0, Bool_
     if (periodStr.Contains("16o")) { dataPattern = "/pass1/AOD208/*/AliAOD.root"; }
     if (periodStr.Contains("16p")) { dataPattern = "/pass1/AOD208/*/AliAOD.root"; }
 
-    TString workingDir = Form("LHC%sJpsiV0M",fperiod);
-    if (subset > 0) workingDir = Form("LHC%s%dJpsiV0M",fperiod,subset);
+    TString workingDir = Form("LHC%sJpsiV0M_v2",fperiod);
+    if (subset > 0) workingDir = Form("LHC%s%dJpsiV0M_v2",fperiod,subset);
 
     //___________EOF: Define the periods, the run lists and the path of the data
 
