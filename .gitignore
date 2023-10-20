@@ -10,3 +10,8 @@ myTask_merge.C
 18CWholeV0/
 18CWholeV0/*
 .DS_Store
+fitJpsi/analyzeOfLucrezia.C
+fitJpsi/exampleFit.C
+fitJpsi/testProjection.C
+fitJpsiBKP/
+fitJpsiBKP/*
