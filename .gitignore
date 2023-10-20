@@ -7,3 +7,6 @@
 *.jdl
 myAnalysis.C
 myTask_merge.C
+18CWholeV0/
+18CWholeV0/*
+.DS_Store

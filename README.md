@@ -27,6 +27,6 @@ Note: 12/10/23 11:15 modification of the task code, added percentile for kINT7 e
 
 Should redo 18b and 18c
 ---
-LHC18d
+LHC18c
 
-aliroot "runAnalysisONGRID_full.C(\"18d\", 0, kFALSE)"
+aliroot "runAnalysisONGRID_full.C(\"18c\", 0, kFALSE)"

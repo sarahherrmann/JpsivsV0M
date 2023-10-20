@@ -34,10 +34,12 @@ void treeReaderHelper::SetTreeAddresses(TTree *trDiMu, TTree *trSingleMu, TTree 
   //tr->SetBranchAddress("fispileupspd",&fispileupspd);
   trDiMu->SetBranchAddress("fv0multTot",&fv0multTot);
   trDiMu->SetBranchAddress("fv0multcorr",&fv0multcorr);
+  trDiMu->SetBranchAddress("fv0cmultTot",&fv0cmultTot);
+  trDiMu->SetBranchAddress("fv0cmultcorr",&fv0cmultcorr);
   trDiMu->SetBranchAddress("fitsmult",&fitsmult);
   trDiMu->SetBranchAddress("fv0mpercentile",&fv0mpercentile);
-  trDiMu->SetBranchAddress("fv0apercentile",&fv0apercentile);
-  trDiMu->SetBranchAddress("fv0cpercentile",&fv0cpercentile);
+  //trDiMu->SetBranchAddress("fv0apercentile",&fv0apercentile);
+  //trDiMu->SetBranchAddress("fv0cpercentile",&fv0cpercentile);
   trDiMu->SetBranchAddress("fcl1percentile",&fcl1percentile);
   trDiMu->SetBranchAddress("fspdpercentile",&fspdpercentile);
   trDiMu->SetBranchAddress("fzvtx",&fzvtx);
@@ -52,11 +54,13 @@ void treeReaderHelper::SetTreeAddresses(TTree *trDiMu, TTree *trSingleMu, TTree 
 
   trInt7->SetBranchAddress("fv0multTotINT7",&fv0multTotINT7);
   trInt7->SetBranchAddress("fv0multCorrINT7",&fv0multCorrINT7);
-  // trInt7->SetBranchAddress("fv0mpercentile7",&fv0mpercentile7);
-  // trInt7->SetBranchAddress("fv0apercentile7",&fv0apercentile7);
-  // trInt7->SetBranchAddress("fv0cpercentile7",&fv0cpercentile7);
-  // trInt7->SetBranchAddress("fcl1percentile7",&fcl1percentile7);
-  // trInt7->SetBranchAddress("fspdpercentile7",&fspdpercentile7);
+  trInt7->SetBranchAddress("fv0cmultTotINT7",&fv0cmultTotINT7);
+  trInt7->SetBranchAddress("fv0cmultCorrINT7",&fv0cmultCorrINT7);
+  trInt7->SetBranchAddress("fv0mpercentile7",&fv0mpercentile7);
+  trInt7->SetBranchAddress("fv0apercentile7",&fv0apercentile7);
+  trInt7->SetBranchAddress("fv0cpercentile7",&fv0cpercentile7);
+  trInt7->SetBranchAddress("fcl1percentile7",&fcl1percentile7);
+  trInt7->SetBranchAddress("fspdpercentile7",&fspdpercentile7);
 }
 
 void treeReaderHelper::GetNV0Histogram(TList *histoList, TTree *trInt7)
@@ -68,11 +72,16 @@ void treeReaderHelper::GetNV0Histogram(TList *histoList, TTree *trInt7)
   hV0MultTot=(TH1F *)histoList->FindObject("hV0MultTot");//get the histograms from the histo list
   hV0MultCorr=(TH1F *)histoList->FindObject("hV0MultCorr");
 
+  hV0CMultTot=(TH1F *)histoList->FindObject("hV0CMultTot");//get the histograms from the histo list
+  hV0CMultCorr=(TH1F *)histoList->FindObject("hV0CMultCorr");
+
   float meanNV0Tot = hV0MultTot->GetMean();//=<NV0>
   float meanNV0Corr = hV0MultCorr->GetMean();//=<NV0>
 
+  float meanNV0CCorr = hV0CMultCorr->GetMean();//=<NV0>
 
-  float NV0OverNV0Mean;
+
+  float NV0OverNV0Mean, NV0COverNV0CMean;
 
   Long64_t nentries = trInt7->GetEntries();
    for (Long64_t i=0;i<nentries;i++)
@@ -80,9 +89,12 @@ void treeReaderHelper::GetNV0Histogram(TList *histoList, TTree *trInt7)
      trInt7->GetEntry(i);
      NV0OverNV0Mean=(fv0multCorrINT7*1.0)/meanNV0Corr;
      fNV0OverNV0Mean->Fill(NV0OverNV0Mean);
-   }
 
-   fNV0OverNV0Mean->Draw();
+     NV0COverNV0CMean=(fv0cmultCorrINT7*1.0)/meanNV0CCorr;
+     fNV0COverNV0CMean->Fill(NV0COverNV0CMean);
+
+     hV0CMultTotCopy->Fill(fv0cmultTotINT7);
+   }
 
    //obtains the V0 signal per channel when no muon in the event ,
    //and fill fV0MultPerChannelNoMu[ichannel] and fEtaPhiV0MeanPerChannelNoMu
@@ -134,8 +146,8 @@ void treeReaderHelper::readEvents(TTree *tr)
    for (Long64_t i=0;i<nentries;i++)
    {
      tr->GetEntry(i);
-     //printf("------- event %lld \n",i);
-     //fChannelsWithMuons.clear();
+
+     //printf(">>>>>>> Event %lld fv0cmultcorr = %f\n", i, fv0cmultcorr);
 
      processDimuons();//fills some dimuon histograms and applies dimuon cuts
 
@@ -151,10 +163,16 @@ void treeReaderHelper::writeOutput(const char *outputFileName)
   TFile* outputfile = new TFile(outputFileName, "RECREATE");
   fJpsiMinv->Write();
   fJpsiPt->Write();
-  fMuonEta->Write();
-  fMuonPhi->Write();
+
+  hMultPtJpsiMinv->Write();
 
   fNV0OverNV0Mean->Write();
+  fNV0COverNV0CMean->Write();
+
+  
+
+  gDirectory->mkdir("V0MultPerChannel");
+  outputfile->cd("V0MultPerChannel");
 
   for (int ichannel=0; ichannel<32; ichannel++)//saving only the histograms with V0C channels
   {
@@ -240,6 +258,10 @@ void treeReaderHelper::processDimuons()
 
       //al the cuts have been applied, now fill histograms
       fJpsiMinv->Fill(minv);
+
+      //printf("---------------fv0cmultcorr = %f, pT = %f, minv = %f\n", fv0cmultcorr, pT, minv);
+
+      hMultPtJpsiMinv->Fill(fv0cmultcorr,pT,minv);
 
 
 

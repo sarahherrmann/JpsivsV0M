@@ -50,6 +50,8 @@ class AliAnaTaskJpsiVsV0M : public AliAnalysisTaskSE
         Bool_t fispileupspd; //!
         Float_t fv0multTot; //!
         Float_t fv0multcorr; //!
+        Float_t fv0cmultTot; //!
+        Float_t fv0cmultcorr; //!
         Double_t fitsmult; //!
         Double_t fv0mpercentile; //!
         Double_t fv0apercentile; //!
@@ -70,6 +72,8 @@ class AliAnaTaskJpsiVsV0M : public AliAnalysisTaskSE
         //Tree branches for fTreeINT7:
         Float_t fv0multTotINT7;  //! total multiplicity in V0
         Float_t fv0multCorrINT7;  //! total corrected multiplicity in V0
+        Float_t fv0cmultTotINT7;  //! total multiplicity in V0C
+        Float_t fv0cmultCorrINT7;  //! total corrected multiplicity in V0C
         Double_t fv0mpercentile7; //!
         Double_t fv0apercentile7; //!
         Double_t fv0cpercentile7; //!
@@ -79,6 +83,8 @@ class AliAnaTaskJpsiVsV0M : public AliAnalysisTaskSE
         //histograms filled in kINT7 events:
         TH1F* hV0MultTot;        //! total multiplicity in the whole V0
         TH1F* hV0MultCorr;       //! total multiplicity in the whole V0, corrected
+        TH1F* hV0CMultTot;        //! total multiplicity in the whole V0C
+        TH1F* hV0CMultCorr;       //! total multiplicity in the whole V0C, corrected
         TH1F* hV0MultPerChannelNoMu[64]; //! multiplicity per V0 channel when there is no muon
 
         AliAnaTaskJpsiVsV0M(const AliAnaTaskJpsiVsV0M&); // not implemented

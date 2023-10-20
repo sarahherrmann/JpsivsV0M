@@ -6,21 +6,42 @@ class treeReaderHelper
  public:
    treeReaderHelper();
    ~treeReaderHelper() = default;
-   //void Clear();
 
+
+   float massBinWidth = 0.05;//bin width for invariant mass
 
    // Methods definition
    void SetMassCuts(Double_t lowMassCut, Double_t upMassCut) { fLowMassCut = lowMassCut; fUpMassCut = upMassCut; }
    void SetJpsiEtaCuts(Double_t min, Double_t max) { fJpsiEtaMin = min; fJpsiEtaMax = max; }
    void InitHistograms()
    {
-     Int_t nBinsMinv = TMath::Nint((fUpMassCut - fLowMassCut)/0.1);
-     fJpsiMinv = new TH1D("fJpsiMinv","Minv;M^{inv} (GeV/c^{2})",2*nBinsMinv,fLowMassCut,fUpMassCut);
-     fJpsiPt = new TH1D("fJpsiPt",";#it{p}_{T} of J/#psi (GeV/c)",20,0,10);
-     fMuonEta = new TH1D("fMuonEta","fMuonEta",50,-4,-2.5);
-     fMuonPhi = new TH1D("fMuonPhi","fMuonPhi",100,0,2*TMath::Pi());
+
+     Int_t nBinsMinv = TMath::Nint((fUpMassCut - fLowMassCut)/massBinWidth);
+     float binEdgesNV0C[] = {0.,30.,57.5,76.,100.,133.,155.,186.,235.,335.,10000.};
+     float binEdgesPt[]={0.,1.,3.,1000};
+
+     float binMinv[]={2.,5.};
+     float binEdgesMinv[nBinsMinv+1];
+     float valueBinEdge=fLowMassCut;
+     int ibin=0;
+     while(valueBinEdge<fUpMassCut+massBinWidth)
+     {
+       binEdgesMinv[ibin]=valueBinEdge;
+       valueBinEdge=valueBinEdge+massBinWidth;
+       ibin++;
+     }
+
+     hMultPtJpsiMinv = new TH3D("hMultPtJpsiMinv",";#it{p}_{T};NV0C;M^{inv} (GeV/c^{2})",(sizeof(binEdgesNV0C) / sizeof(binEdgesNV0C[0]) - 1), binEdgesNV0C,(sizeof(binEdgesPt) / sizeof(binEdgesPt[0]) - 1), binEdgesPt, nBinsMinv,binEdgesMinv);
+     hMultPtJpsiMinv->Sumw2();
+
+
+     fJpsiMinv = new TH1D("fJpsiMinv","Minv;M^{inv} (GeV/c^{2})",nBinsMinv,fLowMassCut,fUpMassCut);
+     fJpsiPt = new TH1D("fJpsiPt",";#it{p}_{T} of J/#psi (GeV/c)",200,0,20);
+
 
      fNV0OverNV0Mean = new TH1F("fNV0OverNV0Mean","fNV0OverNV0Mean",5000,0,50);
+     fNV0COverNV0CMean = new TH1F("fNV0COverNV0CMean","fNV0COverNV0CMean",20000,0,10000);
+     hV0CMultTotCopy = new TH1F("hV0CMultTotCopy","hV0CMultTotCopy",20000,0,10000);
 
      for (int ichannel=0; ichannel<64; ichannel++)//can be reduced to 32, only V0C
      {
@@ -50,7 +71,7 @@ class treeReaderHelper
    void DeriveExcessV0MeanPerChannel();//must be called after all the previous methods
 
 
-   void writeOutput(const char *outputFileName);
+   void writeOutput(const char *outputFileName);//write all the histograms to an output root file
 
 
    Double_t CalcMinv(AliAODTrack *track1,AliAODTrack *track2) const;
@@ -65,6 +86,8 @@ class treeReaderHelper
    //Bool_t fispileupspd; //!
    Float_t fv0multTot; //!
    Float_t fv0multcorr; //!
+   Float_t fv0cmultTot; //!
+   Float_t fv0cmultcorr; //!
    Double_t fitsmult; //!
    Double_t fv0mpercentile; //!
    Double_t fv0apercentile; //!
@@ -86,6 +109,8 @@ class treeReaderHelper
    //Tree branches for fTreeINT7:
    Float_t fv0multTotINT7;  //! total multiplicity in V0
    Float_t fv0multCorrINT7;  //! total corrected multiplicity in V0
+   Float_t fv0cmultTotINT7;  //! total multiplicity in V0C
+   Float_t fv0cmultCorrINT7;  //! total corrected multiplicity in V0C
    Double_t fv0mpercentile7; //!
    Double_t fv0apercentile7; //!
    Double_t fv0cpercentile7; //!
@@ -95,7 +120,12 @@ class treeReaderHelper
    //histograms filled in kINT7 events:
    TH1F* hV0MultTot;        //! total multiplicity in the whole V0
    TH1F* hV0MultCorr;       //! total multiplicity in the whole V0, corrected
+   TH1F* hV0CMultTot;        //! total multiplicity in the whole V0C
+   TH1F* hV0CMultCorr;       //! total multiplicity in the whole V0C, corrected
    TH1F* hV0MultPerChannelNoMu[64]; //! multiplicity per V0 channel when there is no muon
+
+
+   TH1F* hV0CMultTotCopy;
 
  private:
 
@@ -124,10 +154,12 @@ class treeReaderHelper
    //Histograms
    TH1D *fJpsiMinv;
    TH1D *fJpsiPt;
-   TH1D *fMuonEta;
-   TH1D *fMuonPhi;
+
+   TH3D *hMultPtJpsiMinv;//3D histogram of invariant mass (z) versus mult in V0C(x) and pt of Jpsi (y)
+
 
    TH1F *fNV0OverNV0Mean;
+   TH1F *fNV0COverNV0CMean;
 
    TH1F *fV0MultPerChannelNoMu[64];//V0 mult in each channel, when no muon hits the channel
    TH1F *fV0MultPerChannelOneMu[64];//V0 mult in each channel, when one muon hits the channel

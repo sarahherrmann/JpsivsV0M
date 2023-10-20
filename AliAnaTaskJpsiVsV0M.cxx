@@ -56,6 +56,8 @@ AliAnaTaskJpsiVsV0M::AliAnaTaskJpsiVsV0M() : AliAnalysisTaskSE(),
     fispileupspd(kFALSE),
     fv0multTot(-1.),
     fv0multcorr(-1.),
+    fv0cmultTot(-1.),
+    fv0cmultcorr(-1.),
     fitsmult(-1.),
     fv0mpercentile(-1.),
     fv0apercentile(-1.),
@@ -75,8 +77,12 @@ AliAnaTaskJpsiVsV0M::AliAnaTaskJpsiVsV0M() : AliAnalysisTaskSE(),
     ptMu(0.),
     fv0multTotINT7(0.),
     fv0multCorrINT7(0.),
+    fv0cmultTotINT7(0.),
+    fv0cmultCorrINT7(0.),
     hV0MultTot(0),
     hV0MultCorr(0),
+    hV0CMultTot(0),
+    hV0CMultCorr(0),
     nentries(0)
 {
     for(Int_t j=0; j<64; j++)
@@ -101,6 +107,8 @@ AliAnaTaskJpsiVsV0M::AliAnaTaskJpsiVsV0M(const char* name) : AliAnalysisTaskSE(n
     fispileupspd(kFALSE),
     fv0multTot(-1.),
     fv0multcorr(-1.),
+    fv0cmultTot(-1.),
+    fv0cmultcorr(-1.),
     fitsmult(-1.),
     fv0mpercentile(-1.),
     fv0apercentile(-1.),
@@ -120,8 +128,12 @@ AliAnaTaskJpsiVsV0M::AliAnaTaskJpsiVsV0M(const char* name) : AliAnalysisTaskSE(n
     ptMu(0.),
     fv0multTotINT7(0.),
     fv0multCorrINT7(0.),
+    fv0cmultTotINT7(0.),
+    fv0cmultCorrINT7(0.),
     hV0MultTot(0),
     hV0MultCorr(0),
+    hV0CMultTot(0),
+    hV0CMultCorr(0),
     nentries(0)
 {
     // constructor
@@ -188,6 +200,12 @@ void AliAnaTaskJpsiVsV0M::UserCreateOutputObjects()
     hV0MultCorr = new TH1F("hV0MultCorr", "hV0MultCorr", 20000, 0, 10000);
     fOutputList->Add(hV0MultCorr);
 
+    hV0CMultTot = new TH1F("hV0CMultTot", "hV0CMultTot", 20000, 0, 10000);
+    fOutputList->Add(hV0CMultTot);
+
+    hV0CMultCorr = new TH1F("hV0CMultCorr", "hV0CMultCorr", 20000, 0, 10000);
+    fOutputList->Add(hV0CMultCorr);
+
     for(Int_t ichannel=0; ichannel<64; ichannel++)
     {
       hV0MultPerChannelNoMu[ichannel] = new TH1F(Form("hV0MultPerChannelNoMu_%d",ichannel),Form("hV0MultPerChannelNoMu_%d",ichannel),500,0,250);
@@ -222,10 +240,12 @@ void AliAnaTaskJpsiVsV0M::SetTreeDiMu(TTree *tr)
   //tr->Branch("fispileupspd",&fispileupspd);
   tr->Branch("fv0multTot",&fv0multTot);
   tr->Branch("fv0multcorr",&fv0multcorr);
+  tr->Branch("fv0cmultTot",&fv0cmultTot);
+  tr->Branch("fv0cmultcorr",&fv0cmultcorr);
   tr->Branch("fitsmult",&fitsmult);
   tr->Branch("fv0mpercentile",&fv0mpercentile);
-  tr->Branch("fv0apercentile",&fv0apercentile);
-  tr->Branch("fv0cpercentile",&fv0cpercentile);
+  // tr->Branch("fv0apercentile",&fv0apercentile);
+  // tr->Branch("fv0cpercentile",&fv0cpercentile);
   tr->Branch("fcl1percentile",&fcl1percentile);
   tr->Branch("fspdpercentile",&fspdpercentile);
   tr->Branch("fzvtx",&fzvtx);
@@ -245,6 +265,8 @@ void AliAnaTaskJpsiVsV0M::SetTreeINT7(TTree *tr)
 {
   tr->Branch("fv0multTotINT7",&fv0multTotINT7,"fv0multTotINT7/F");
   tr->Branch("fv0multCorrINT7",&fv0multCorrINT7,"fv0multCorrINT7/F");
+  tr->Branch("fv0cmultTotINT7",&fv0cmultTotINT7,"fv0cmultTotINT7/F");
+  tr->Branch("fv0cmultCorrINT7",&fv0cmultCorrINT7,"fv0cmultCorrINT7/F");
   tr->Branch("fv0mpercentile7",&fv0mpercentile7);
   tr->Branch("fv0apercentile7",&fv0apercentile7);
   tr->Branch("fv0cpercentile7",&fv0cpercentile7);
@@ -395,12 +417,14 @@ void AliAnaTaskJpsiVsV0M::UserExec(Option_t *)
       Float_t V0AMult = vzeroAOD->GetMTotV0A();
       Float_t V0CMult = vzeroAOD->GetMTotV0C();
       fv0multTot=V0AMult+V0CMult;//total V0 multiplicity in this event
+      fv0cmultTot=V0CMult;//total V0 multiplicity in this event
 
       //------------------------   V0M Correction
       Float_t vzeroMultACorr=V0AMult, vzeroMultCCorr=V0CMult;
       vzeroMultACorr = AliESDUtils::GetCorrV0A(V0AMult,fzvtx);
       vzeroMultCCorr = AliESDUtils::GetCorrV0C(V0CMult,fzvtx);
       fv0multcorr = vzeroMultACorr + vzeroMultCCorr; // corrected V0 multiplicity
+      fv0cmultcorr = vzeroMultCCorr; // corrected V0 multiplicity
 
 
       //---- Store V0 signal channel per channel
@@ -455,15 +479,21 @@ void AliAnaTaskJpsiVsV0M::UserExec(Option_t *)
       Float_t V0AMult = vzeroAOD->GetMTotV0A();
       Float_t V0CMult = vzeroAOD->GetMTotV0C();
       fv0multTotINT7=V0AMult+V0CMult;//total V0 multiplicity in this event
+      fv0cmultTotINT7=V0CMult;//total V0C multiplicity in this event
 
       //------------------------   V0M Correction
       Float_t vzeroMultACorr=V0AMult, vzeroMultCCorr=V0CMult;
       vzeroMultACorr = AliESDUtils::GetCorrV0A(V0AMult,fzvtx);
       vzeroMultCCorr = AliESDUtils::GetCorrV0C(V0CMult,fzvtx);
       fv0multCorrINT7 = vzeroMultACorr + vzeroMultCCorr; // corrected V0 multiplicity
+      fv0cmultCorrINT7 = vzeroMultCCorr; // corrected V0C multiplicity
 
       hV0MultTot->Fill(fv0multTotINT7);
       hV0MultCorr->Fill(fv0multCorrINT7);
+
+      hV0CMultTot->Fill(fv0cmultTotINT7);
+      hV0CMultCorr->Fill(fv0cmultCorrINT7);
+
 
       if (ftracksmu->GetEntriesFast()==0)
       {

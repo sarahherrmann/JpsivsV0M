@@ -16,3 +16,20 @@ GetNbinsY
 hDiffEtaPhiMeanV0[k]->SetBinContent(etabin, phibin, diff);//TH2F containing the excess mean mult
 
 this will be in DeriveExcessV0MeanPerChannel()
+
+
+
+---
+readTree("/Volumes/T7Shield/SARAH/JpsiV0M/myTaskv2/18c_AnalysisResults.root","18c")
+
+readTree("/Volumes/T7Shield/SARAH/JpsiV0M/myTaskv2/18b_AnalysisResults.root","18b")
+---
+Binning:
+.L binsV0C.C
+binsV0C("/Volumes/T7Shield/SARAH/JpsiV0M/myTaskv2/18b_AnalysisResults.root","hV0CMultCorr","JpsiVsV0M/kINT7Histograms")
+
+This is to use the corrected V0C mult histo to get the bins in NV0, and in `NV0/<NV0>`
+
+
+binsV0C("/Volumes/T7Shield/SARAH/JpsiV0M/myTaskv2/18d_AnalysisResults.root","hV0CMultCorr","JpsiVsV0M/kINT7Histograms")
+Problem with the finest bins with high mult
