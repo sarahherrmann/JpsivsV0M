@@ -5,6 +5,7 @@
 *.root
 *.sh
 *.jdl
+*.pdf
 myAnalysis.C
 myTask_merge.C
 18CWholeV0/
@@ -15,3 +16,4 @@ fitJpsi/exampleFit.C
 fitJpsi/testProjection.C
 fitJpsiBKP/
 fitJpsiBKP/*
+ReadingTree/18d/

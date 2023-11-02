@@ -30,6 +30,8 @@ void binsV0C(const char *fn = "JpsiRead_18c.root", const char *hname = "hV0CMult
   Float_t NV0mean = h->GetMean();
   Float_t binWidth = h->GetBinWidth(1);
 
+  Float_t maxMult;
+
   Float_t sum = 0, entries = 0;
   Int_t currentInt = 0;
   Double_t V0values[n];
@@ -38,6 +40,12 @@ void binsV0C(const char *fn = "JpsiRead_18c.root", const char *hname = "hV0CMult
   for(Int_t ibin = 1; ibin <= h->GetNbinsX(); ++ibin) {
     Float_t cont = h->GetBinContent(ibin);
     Float_t mult = h->GetXaxis()->GetBinCenter(ibin);
+    if(mult > NV0mean*8.)
+    {
+      //we stop at NV0C/<NV0C>=8, after that there is too much fluctuations
+      maxMult=h->GetXaxis()->GetBinLowEdge(ibin);
+      break;
+    }
     entries += cont;
     sum += (cont*mult);
     if ((currentInt < n-1) && (entries/totalEntries) > targetPercentiles[currentInt]) {
@@ -58,7 +66,7 @@ void binsV0C(const char *fn = "JpsiRead_18c.root", const char *hname = "hV0CMult
   for(Int_t i = 0; i < n; ++i) {
     //printf("Interval %d:  [%f -> %f]   NV0/<NV0> = %f  percentile = %f\n",
     printf("Interval %d:  [%f -> %f]   NV0 = %f  percentile = %f\n",
-	   i,(i==0)?0:V0limits[i-1],(i==n-1)?-1:V0limits[i],
+	   i,(i==0)?0:V0limits[i-1],(i==n-1)?maxMult:V0limits[i],
 	   V0values[i],V0percentiles[i]);
 
 
@@ -67,7 +75,7 @@ void binsV0C(const char *fn = "JpsiRead_18c.root", const char *hname = "hV0CMult
   }
   for(Int_t i = 0; i < n; ++i) {
   printf("Corresponding Interval %d:  [%f -> %f]   NV0/<NV0> = %f  percentile = %f\n",
-  i,(i==0)?0:(V0limits[i-1]/NV0mean),(i==n-1)?-1:(V0limits[i]/NV0mean),
+  i,(i==0)?0:(V0limits[i-1]/NV0mean),(i==n-1)?maxMult/NV0mean:(V0limits[i]/NV0mean),
   (V0values[i]/NV0mean),V0percentiles[i]);
   }
 }

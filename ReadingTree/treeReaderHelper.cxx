@@ -1,6 +1,7 @@
 #include "treeReaderHelper.h"
 #include "AliAODTrack.h"
 #include "AliVVZERO.h"
+#include "AliESDUtils.h"
 
 treeReaderHelper::treeReaderHelper()
 {
@@ -24,7 +25,30 @@ treeReaderHelper::treeReaderHelper()
     indexPhiMin--;
     //filling the map
     fChannelMapV0[{indexEtaMin, indexPhiMin}] = ichannel;
+  }//for (int ichannel=0; ichannel<32; ichannel++)
 
+  for (int ichannel=0; ichannel<32; ichannel++)
+  {
+    //-----------------------
+    //Other map: channelId to the 2 channels at -+pi/2
+    //Needs previous map to be filled !! Hence the different loop
+
+    float etaMid =  AliVVZERO::GetVZEROEtaMin(ichannel)+0.25;
+    float phiMid = AliVVZERO::GetVZEROAvgPhi(ichannel);
+
+    float phiPlusPiOver2 = phiMid + TMath::Pi()/2;
+    float phiMinusPiOver2 = phiMid - TMath::Pi()/2;
+
+    bringTo02Pi(phiPlusPiOver2);//between 0 and 2pi
+    bringTo02Pi(phiMinusPiOver2);//between 0 and 2pi
+
+    int channelPlusPiOver2 = GetChannelFromEtaPhi(etaMid, phiPlusPiOver2);//channel across the channel hit
+    int channelMinusPiOver2 = GetChannelFromEtaPhi(etaMid, phiMinusPiOver2);//channel across the channel hit
+
+
+    //printf("---- channelId = %d, channel+pi/2 = %d, channel-pi/2 = %d\n", ichannel, channelPlusPiOver2, channelMinusPiOver2);
+
+    fChannelAccrossChannelId[ichannel]={channelPlusPiOver2, channelMinusPiOver2};
   }//for (int ichannel=0; ichannel<32; ichannel++)
 }
 
@@ -93,7 +117,7 @@ void treeReaderHelper::GetNV0Histogram(TList *histoList, TTree *trInt7)
      NV0COverNV0CMean=(fv0cmultCorrINT7*1.0)/meanNV0CCorr;
      fNV0COverNV0CMean->Fill(NV0COverNV0CMean);
 
-     hV0CMultTotCopy->Fill(fv0cmultTotINT7);
+     hV0CMultCorrCopy->Fill(fv0cmultCorrINT7);
    }
 
    //obtains the V0 signal per channel when no muon in the event ,
@@ -115,6 +139,7 @@ void treeReaderHelper::GetNV0Histogram(TList *histoList, TTree *trInt7)
 
 
 }
+
 
 void treeReaderHelper::DeriveExcessV0MeanPerChannel()
 {
@@ -141,19 +166,26 @@ void treeReaderHelper::DeriveExcessV0MeanPerChannel()
 
 void treeReaderHelper::readEvents(TTree *tr)
 {
+  fillCorrFactorMap();
   //read events one by one and calls the different processFunctions for each events
   Long64_t nentries = tr->GetEntries();
    for (Long64_t i=0;i<nentries;i++)
    {
      tr->GetEntry(i);
 
-     //printf(">>>>>>> Event %lld fv0cmultcorr = %f\n", i, fv0cmultcorr);
-
      processDimuons();//fills some dimuon histograms and applies dimuon cuts
 
-     //processV0PerChannel();
+
 
    }
+
+   //2nd loop to correct the mult with dimuon events correction
+    for (Long64_t i=0;i<nentries;i++)
+    {
+      tr->GetEntry(i);
+
+      processDimuons(false);//applies dimuon cuts and fills corrected mult Minv histogram
+    }
 
 
 }//readTree
@@ -165,11 +197,16 @@ void treeReaderHelper::writeOutput(const char *outputFileName)
   fJpsiPt->Write();
 
   hMultPtJpsiMinv->Write();
+  hMultPtJpsiMinvCorr->Write();
+
+  hMultMinusMultCorr->Write();
 
   fNV0OverNV0Mean->Write();
   fNV0COverNV0CMean->Write();
 
-  
+  hV0CMultCorrCopy->Write();
+
+  hV0CMultInSingleMu->Write();
 
   gDirectory->mkdir("V0MultPerChannel");
   outputfile->cd("V0MultPerChannel");
@@ -182,7 +219,11 @@ void treeReaderHelper::writeOutput(const char *outputFileName)
     //fEtaPhiV0PerChannelOneMu[ichannel]->Write();//useless now, since we have the mean below
     fEtaPhiV0MeanPerChannelOneMu[ichannel]->Write();
 
-    hDiffEtaPhiMeanV0[ichannel]->Write();
+    //hDiffEtaPhiMeanV0[ichannel]->Write();
+    fDiMuCorrectionWDiMuEv[ichannel]->Write();
+    fDiMuCorrectionWSiMuEv[ichannel]->Write();
+
+    fEtaPhiMeanV0DiMuonEv[ichannel]->Write();
   }
   fEtaPhiV0MeanPerChannelNoMu->Write();
 
@@ -208,6 +249,9 @@ void treeReaderHelper::processV0PerChannelSingleMu(TTree *trSingleMu)
 
      fV0MultPerChannelOneMu[channelMu]->Fill(fv0multSMu[channelMu]);
 
+     //temporary: fill the raw tot mult in V0C in single muon events (with one muon in V0C acc)
+     float totMultSingleMu=0;
+
      //now we fill the histogram fEtaPhiV0PerChannelOneMu[idChannelMu] with eta, phi and v0mult for all channels
      float etaMid, phiMid; // eta and phi of the middle of each channel
      for (int ichannel=0; ichannel<32; ichannel++)//if ichannel>31, the signal is in V0A, no muons there
@@ -218,7 +262,11 @@ void treeReaderHelper::processV0PerChannelSingleMu(TTree *trSingleMu)
 
        fEtaPhiV0MeanPerChannelOneMu[channelMu]->Fill(etaMid, phiMid, fv0multSMu[ichannel]);//since it is a TProfile2D, it will compute the mean V0 mult in each x,y bin
        //by doing Z(x,y)=sum(z(x,y))/nb of entries in (x,y bin) I guess ??
+
+       totMultSingleMu+=fv0multSMu[ichannel];
      }
+
+     hV0CMultInSingleMu->Fill(totMultSingleMu);
 
    }
 
@@ -230,7 +278,38 @@ void treeReaderHelper::processV0PerChannelSingleMu(TTree *trSingleMu)
 
 }
 
-void treeReaderHelper::processDimuons()
+void treeReaderHelper::fillCorrFactorMap()
+{
+  //fills the map of correction factor (derived with single muon histos)
+  //for each channel Id
+	float corrFactor=0.;
+  std::pair<int, int> channelsAcross;
+  float meanPedestal;
+  float meanSignal;
+	for (int ichannel=0; ichannel<32; ichannel++)
+  {
+    float etaMi = AliVVZERO::GetVZEROEtaMin(ichannel) + 0.25;
+    float phiMi = AliVVZERO::GetVZEROAvgPhi(ichannel);
+
+    channelsAcross=fChannelAccrossChannelId[ichannel];
+
+
+    meanPedestal = fEtaPhiV0MeanPerChannelOneMu[channelsAcross.first]->GetBinContent(fEtaPhiV0MeanPerChannelOneMu[channelsAcross.first]->FindBin(etaMi,phiMi));
+    meanPedestal+= fEtaPhiV0MeanPerChannelOneMu[channelsAcross.second]->GetBinContent(fEtaPhiV0MeanPerChannelOneMu[channelsAcross.second]->FindBin(etaMi,phiMi));
+
+    meanPedestal=meanPedestal/2.0;
+
+    meanSignal=fEtaPhiV0MeanPerChannelOneMu[ichannel]->GetBinContent(fEtaPhiV0MeanPerChannelOneMu[ichannel]->FindBin(etaMi,phiMi));
+
+    corrFactor=meanSignal-meanPedestal;
+    //computed the corrfactor and now store it in fChannelToCorrFactor[ichannel]
+	 fChannelToCorrFactor[ichannel]=corrFactor;
+
+}
+
+
+
+void treeReaderHelper::processDimuons(bool IsFirstTime = true)
 {
   //================================= Dimuons =================================
 
@@ -249,7 +328,7 @@ void treeReaderHelper::processDimuons()
 
 
       Double_t pT = CalcPt(track1,track2);//pT of dimuon
-      fJpsiPt->Fill(pT);
+
       // Int_t ptBinJpsi = fJpsiPtAxis -> FindBin(pT);
       // if (ptBinJpsi<1 || ptBinJpsi>fNbinsJpsiPt) continue;//underflow or overflow , ignore
       Double_t y = CalcY(track1,track2);//rapidity of dimuon
@@ -257,11 +336,25 @@ void treeReaderHelper::processDimuons()
 
 
       //al the cuts have been applied, now fill histograms
-      fJpsiMinv->Fill(minv);
+      if (IsFirstTime)
+      {
+        fJpsiPt->Fill(pT);
+        fJpsiMinv->Fill(minv);
+        hMultPtJpsiMinv->Fill(fv0cmultcorr,pT,minv);
 
-      //printf("---------------fv0cmultcorr = %f, pT = %f, minv = %f\n", fv0cmultcorr, pT, minv);
 
-      hMultPtJpsiMinv->Fill(fv0cmultcorr,pT,minv);
+        Float_t correctedfv0cmultcorrFirstCorr = correctDimuons(track1,track2);
+      }
+
+
+      if (!IsFirstTime)
+      {
+        Float_t correctedfv0cmultcorr = correctDimuons(track1,track2, true);//correction with dimuon events, different than before
+
+        hMultPtJpsiMinvCorr->Fill(correctedfv0cmultcorr,pT,minv);
+
+        hMultMinusMultCorr->Fill(fv0cmultcorr-correctedfv0cmultcorr);
+      }
 
 
 
@@ -269,6 +362,231 @@ void treeReaderHelper::processDimuons()
   }// first muon
 
 }
+
+Float_t treeReaderHelper::correctDimuons(AliAODTrack *track1, AliAODTrack *track2, bool IsCorrWithDiMu = false)
+{
+  //if IsCorrWithDiMu==true then this code has already ran once on all the tree, has filled the histograms fEtaPhiMeanV0DiMuonEv
+  //and we can now derive the new correction, based on dimuon events
+  Float_t correctedformuons_fv0mult;
+
+  //---------------------------------- muon 1 ----------------------------------
+  float eta1 = track1->Eta();
+  float phi1 = track1->Phi();
+
+  int channel1 = GetChannelFromEtaPhi(eta1, phi1);//channel hit by muon 1
+  //if not -1
+
+  //Note: the histograms of the mean value of mult for each fv0 channels are already filled
+  //the histograms named fEtaPhiV0MeanPerChannelOneMu[ichannel]
+
+  //Now for the correction, we need to retrieve the channels at +pi/2 and -pi/2 from channel 1
+  //in the same eta ring
+
+  float signalChannel1;
+  float meanPedestal1=0.;
+
+  std::pair<int, int> channelsAcross1;
+
+  if (channel1 != -1)
+  {
+    //initial signal in channel 1
+    signalChannel1=fv0mult[channel1];
+
+    //mean eta and phi position of channel1 (to retrieve the pedestal)
+    float etaMi = AliVVZERO::GetVZEROEtaMin(channel1) + 0.25;
+    float phiMi = AliVVZERO::GetVZEROAvgPhi(channel1);
+
+    channelsAcross1 = fChannelAccrossChannelId[channel1];
+
+    if(!IsCorrWithDiMu)
+    {
+      meanPedestal1 = fEtaPhiV0MeanPerChannelOneMu[channelsAcross1.first]->GetBinContent(fEtaPhiV0MeanPerChannelOneMu[channelsAcross1.first]->FindBin(etaMi,phiMi));
+      meanPedestal1+= fEtaPhiV0MeanPerChannelOneMu[channelsAcross1.second]->GetBinContent(fEtaPhiV0MeanPerChannelOneMu[channelsAcross1.second]->FindBin(etaMi,phiMi));
+    }
+    else
+    {
+      //we want to use dimuon event correction
+      meanPedestal1 = fEtaPhiMeanV0DiMuonEv[channelsAcross1.first]->GetBinContent(fEtaPhiMeanV0DiMuonEv[channelsAcross1.first]->FindBin(etaMi,phiMi));
+      meanPedestal1+= fEtaPhiMeanV0DiMuonEv[channelsAcross1.second]->GetBinContent(fEtaPhiMeanV0DiMuonEv[channelsAcross1.second]->FindBin(etaMi,phiMi));
+    }
+
+
+    meanPedestal1 = meanPedestal1/2.f;
+
+  }
+
+  //---------------------------------- muon 2 ----------------------------------
+  float eta2 = track2->Eta();
+  float phi2 = track2->Phi();
+
+  int channel2 = GetChannelFromEtaPhi(eta2, phi2);//channel hit by muon 2
+  //if not -1
+
+  float signalChannel2;
+  float meanPedestal2=0.;
+
+  std::pair<int, int> channelsAcross2;
+
+  if (channel2 != -1)
+  {
+    //initial signal in channel 2
+    signalChannel2=fv0mult[channel2];
+
+    //mean eta and phi position of channel2 (to retrieve the pedestal)
+    float etaMi = AliVVZERO::GetVZEROEtaMin(channel2) + 0.25;
+    float phiMi = AliVVZERO::GetVZEROAvgPhi(channel2);
+
+    channelsAcross2 = fChannelAccrossChannelId[channel2];
+
+    if(!IsCorrWithDiMu)
+    {
+      meanPedestal2 = fEtaPhiV0MeanPerChannelOneMu[channelsAcross2.first]->GetBinContent(fEtaPhiV0MeanPerChannelOneMu[channelsAcross2.first]->FindBin(etaMi,phiMi));
+      meanPedestal2+= fEtaPhiV0MeanPerChannelOneMu[channelsAcross2.second]->GetBinContent(fEtaPhiV0MeanPerChannelOneMu[channelsAcross2.second]->FindBin(etaMi,phiMi));
+    }
+    else
+    {
+      meanPedestal2 = fEtaPhiMeanV0DiMuonEv[channelsAcross2.first]->GetBinContent(fEtaPhiMeanV0DiMuonEv[channelsAcross2.first]->FindBin(etaMi,phiMi));
+      meanPedestal2+= fEtaPhiMeanV0DiMuonEv[channelsAcross2.second]->GetBinContent(fEtaPhiMeanV0DiMuonEv[channelsAcross2.second]->FindBin(etaMi,phiMi));
+    }
+
+
+    meanPedestal2 = meanPedestal2/2.f;
+
+  }
+
+
+  int type=0;//1 is muon in channel 1 only, 2 is muon in channel 2 only, 3 is muon in channel 1 & 2
+
+  if (channel1 == -1 || channel2 == -1)//no muon hit the V0C
+  {
+    return fv0cmultcorr;//return the mult without additionnal correction
+  }
+
+  if (channel1 != -1 && channel2 == -1)
+  {
+    //fDiMuCorrectionWDiMuEv[channel1]->Fill(signalChannel1-meanPedestal1);
+
+    type=1;
+
+    //TEMPORARY: beware, the fDimuCorrection before contained the signle mu correction
+    if (IsCorrWithDiMu)
+    {
+      fDiMuCorrectionWDiMuEv[channel1]->Fill(signalChannel1-meanPedestal1);
+    }
+    else
+    {
+      fDiMuCorrectionWSiMuEv[channel1]->Fill(signalChannel1-meanPedestal1);
+    }
+
+    if (!IsCorrWithDiMu)
+    {
+      //we have not yet filled the histograms needed for dimuon correction
+      //necessarely channeliP and channeliM are not touched by a muon: fill the histogram
+      for (int ichannel=0; ichannel<32; ichannel++)
+      {
+        float etaMi = AliVVZERO::GetVZEROEtaMin(ichannel) + 0.25;
+        float phiMi = AliVVZERO::GetVZEROAvgPhi(ichannel);
+        fEtaPhiMeanV0DiMuonEv[channel1]->Fill(etaMi, phiMi, fv0mult[ichannel]);
+      }
+    }
+
+  }
+
+  if (channel1 == -1 && channel2 != -1)
+  {
+
+    type=2;
+    if (IsCorrWithDiMu)
+    {
+      //beware: the correction tactic is not really the same
+      fDiMuCorrectionWDiMuEv[channel2]->Fill(signalChannel2-meanPedestal2);
+    }
+    else
+    {
+      fDiMuCorrectionWSiMuEv[channel2]->Fill(signalChannel2-meanPedestal2);
+    }
+
+    if (!IsCorrWithDiMu)
+    {
+      //we have not yet filled the histograms needed for dimuon correction
+      //necessarely channeliP and channeliM are not touched by a muon: fill the histogram
+      for (int ichannel=0; ichannel<32; ichannel++)
+      {
+        float etaMi = AliVVZERO::GetVZEROEtaMin(ichannel) + 0.25;
+        float phiMi = AliVVZERO::GetVZEROAvgPhi(ichannel);
+        fEtaPhiMeanV0DiMuonEv[channel2]->Fill(etaMi, phiMi, fv0mult[ichannel]);
+      }
+    }
+
+
+  }
+
+  if (channel1 != -1 && channel2 != -1)//both muons hit
+  {
+
+    type=3;
+
+    if (IsCorrWithDiMu)
+    {
+      fDiMuCorrectionWDiMuEv[channel1]->Fill(signalChannel1-meanPedestal1);
+      fDiMuCorrectionWDiMuEv[channel2]->Fill(signalChannel2-meanPedestal2);
+    }
+    else
+    {
+      fDiMuCorrectionWSiMuEv[channel2]->Fill(signalChannel2-meanPedestal2);
+    }
+
+    if(channel2 != channelsAcross1.first && channel2 != channelsAcross1.second && !IsCorrWithDiMu)
+    {
+      //the second muon didn't touch the channels across from channel1 at +-pi/2
+      //necessarely channeliP and channeliM are not touched by a muon: fill the histogram
+      for (int ichannel=0; ichannel<32; ichannel++)
+      {
+        float etaMi = AliVVZERO::GetVZEROEtaMin(ichannel) + 0.25;
+        float phiMi = AliVVZERO::GetVZEROAvgPhi(ichannel);
+        fEtaPhiMeanV0DiMuonEv[channel1]->Fill(etaMi, phiMi, fv0mult[ichannel]);
+      }
+    }
+
+    if(channel1 != channelsAcross2.first && channel1 != channelsAcross2.second && !IsCorrWithDiMu)
+    {
+      //the second muon didn't touch the channels across from channel1 at +-pi/2
+      //necessarely channeliP and channeliM are not touched by a muon: fill the histogram
+      for (int ichannel=0; ichannel<32; ichannel++)
+      {
+        float etaMi = AliVVZERO::GetVZEROEtaMin(ichannel) + 0.25;
+        float phiMi = AliVVZERO::GetVZEROAvgPhi(ichannel);
+        fEtaPhiMeanV0DiMuonEv[channel2]->Fill(etaMi, phiMi, fv0mult[ichannel]);
+      }
+    }
+  }
+
+  float V0CMult=fv0cmultTot;
+  //recorrect with ESD utils the V0C mult, with fzvtx
+
+  //since fv0cmultTot is just the sum of the signal in each channel, I can just substract the corrections
+
+  if (type==1)
+  {
+    V0CMult=V0CMult-signalChannel1+meanPedestal1;//equivalent to meanpedestal1+rest of channels' signal
+  }
+  if (type==2)
+  {
+    V0CMult=V0CMult-signalChannel2+meanPedestal2;//equivalent to meanpedestal2+rest of channels' signal
+  }
+  if (type==3)
+  {
+    V0CMult=V0CMult-signalChannel1-signalChannel2+meanPedestal1+meanPedestal2;
+  }
+
+
+  correctedformuons_fv0mult = AliESDUtils::GetCorrV0C(V0CMult,fzvtx);
+
+
+  return correctedformuons_fv0mult;
+}
+
+//===============================================================================
 
 Double_t treeReaderHelper::CalcMinv(AliAODTrack *track1, AliAODTrack *track2) const
 {
@@ -356,4 +674,17 @@ int treeReaderHelper::GetChannelFromEtaPhi(float eta, float phi)
     return -1;
   }
   return fChannelMapV0[{i,j-1}];
+}
+
+//=============================================================================
+
+void treeReaderHelper::bringTo02Pi(float& phi)
+{
+  // ensure angle in [0:2pi] for the any input angle
+  while (phi < 0.f) {
+    phi += 2*TMath::Pi();
+  }
+  while (phi > 2*TMath::Pi()) {
+    phi -= 2*TMath::Pi();
+  }
 }

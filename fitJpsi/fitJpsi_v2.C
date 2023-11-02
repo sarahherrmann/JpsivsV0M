@@ -16,24 +16,104 @@ Double_t functionBackgroundPol2Exp(Double_t *x, Double_t *par);
 Double_t functionSignalCBEBackgroundPol2Exp(Double_t *x, Double_t *par);
 Double_t functionSignal2CBEBackgroundPol2Exp(Double_t *x, Double_t *par);
 
-void fitJpsi(const char *inputFile = "../ReadingTree/JpsiRead_18c.root")
+void fitJpsi1histogram(int i, int j, TH1D* hJpsiMinv);
+
+
+TCanvas *cJpsiResults[12][5];
+TCanvas *cJpsiResultsMean[5];//mean values of Jpsi (integrated in mult)
+
+double intJpsi[12][5];//contains the number of jpsi for each mult and pt bins
+double intJpsiMean[5];//contains the number of jpsi for each pt bins (integrated in mult)
+TH2D *hIntJpsi;//the weight is the jpsi integral, for the corresponding (mult,pt) bin
+TH1D *hIntJpsiMean;//the weight is the jpsi integral, for the corresponding pt bin
+
+void fitJpsi(const char *inputFile = "../ReadingTree/JpsiRead_18c.root", const char *outputFile = "FitResults_18c.root", const char *histname="hMultPtJpsiMinv")
 {
 
 
   TFile* inputf = TFile::Open(inputFile,"READ");
 
-  TH1D* hJpsiMinv = (TH1D*)inputf->Get("fJpsiMinv");
+  TH1F* hV0CMultCorr= (TH1F*)inputf->Get("hV0CMultCorrCopy");
 
-  TH3D* hJpsi3D = (TH3D*)inputf->Get("hMultPtJpsiMinv");
-  TH1D* hJpsi3D_pz = hJpsi3D->ProjectionZ("_pz",1,1,1,1);
+  TH3D* hJpsi3D = (TH3D*)inputf->Get(histname);
+
+  //use hJpsi3D binning to create the binning for hIntJpsi
+  TAxis *xaxis = hJpsi3D->GetXaxis();//mult bins from hJpsi3D
+  TAxis *yaxis = hJpsi3D->GetYaxis();//pT bins from hJpsi3D
+
+
+  hIntJpsi = new TH2D("hIntJpsi", "hIntJpsi", hJpsi3D->GetNbinsX(), xaxis->GetXbins()->GetArray(), hJpsi3D->GetNbinsY(), yaxis->GetXbins()->GetArray());
+  //number of jpsi versus mult and pt
+
+  hIntJpsiMean = new TH1D("hIntJpsiMean", "hIntJpsiMean", hJpsi3D->GetNbinsY(), yaxis->GetXbins()->GetArray());//number of Jpsi vs pt
+
+  TFile* outputfile = new TFile(outputFile, "RECREATE");
+
+
+  const int nBinsMult = hJpsi3D->GetNbinsX();
+  const int nBinsPt = hJpsi3D->GetNbinsY();
+
+  TH1D* hJpsi3D_pz[nBinsMult][nBinsPt];
+
+  TH1D* hJpsi3D_pz_mean[nBinsPt];//used to calculate the mean value of Jpsi integrated over all mult classes
+
+
+  for (int i=0;i<nBinsMult;i++)
+  {
+    //i: index for mult bin
+    for (int j=0;j<nBinsPt;j++)
+    {
+      //j: index for pt jpsi bin
+      hJpsi3D_pz[i][j]=hJpsi3D->ProjectionZ(Form("_pz_%d_%d",i+1,j+1),i+1,i+1,j+1,j+1);//i and j are bin numbers, they begin at 1
+      hJpsi3D_pz[i][j]->SetTitle("");
+      printf("Fitting minv histogram for multbin = %d, ptbin = %d\n", i+1,j+1);
+      fitJpsi1histogram(i,j,hJpsi3D_pz[i][j]);
 
 
 
+
+
+
+      cJpsiResults[i][j]->Write();
+    }
+  }
+
+
+
+  hIntJpsi->Write();
+
+
+  //computing the mean values, integrated over mult
+  int i = -1;
+
+  for (int j=0;j<nBinsPt;j++)
+  {
+    //j: index for pt jpsi bin
+    hJpsi3D_pz_mean[j]=hJpsi3D->ProjectionZ(Form("_pz_mean_%d",j+1),1,nBinsMult,j+1,j+1);//i and j are bin numbers, they begin at 1
+    hJpsi3D_pz_mean[j]->SetTitle("");
+    printf("Fitting minv histogram for integrated multbins, ptbin = %d\n",j+1);
+    fitJpsi1histogram(-1,j,hJpsi3D_pz_mean[j]);
+
+    cJpsiResultsMean[j]->Write();
+  }
+
+
+
+  hIntJpsiMean->Write();
+
+  hV0CMultCorr->Write("hV0CMultCorr");
+
+  outputfile->Close();
+
+}//void fitJpsi
+
+void fitJpsi1histogram(int i, int j,TH1D* hJpsiMinv)//fit the histogram corresponding to bin i in mult and j in pt
+{
   //--------------------- Fit background function ----------------------------
 
   //---- step 1: get the parameters for the left and right fit
 
-  TCanvas *cBKG = new TCanvas("cBKG","Fitting background func",10,10,700,500);
+  //TCanvas *cBKG = new TCanvas("cBKG","Fitting background func",10,10,700,500);
 
   TF1 *fitBkgLeft = new TF1("fitBkgLeft",functionBackgroundPol2Exp,2,fFitRejectRangeLow,4);//xmin, xmax, nparameters
   fitBkgLeft->SetNpx(npx);
@@ -59,6 +139,7 @@ void fitJpsi(const char *inputFile = "../ReadingTree/JpsiRead_18c.root")
 
   fRejectFitPoints=true;
 
+
   TF1 *fitBkgPrelim = new TF1("fitBkgPrelim",functionBackgroundPol2Exp,2,5,4);//xmin, xmax, nparameters
   fitBkgPrelim->SetNpx(npx);
   fitBkgPrelim->SetLineWidth(4);
@@ -71,7 +152,7 @@ void fitJpsi(const char *inputFile = "../ReadingTree/JpsiRead_18c.root")
   fitBkgPrelim->SetParameter(2,(parBkgRight[2]+parBkgLeft[2])/2.0);
   fitBkgPrelim->SetParameter(3,(parBkgRight[3]+parBkgLeft[3])/2.0);
 
-  hJpsiMinv->Fit("fitBkgPrelim","V+","ep", 2, 5);
+  hJpsiMinv->Fit("fitBkgPrelim","0","ep", 2, 5);//hJpsiMinv->Fit("fitBkgPrelim","V+","ep", 2, 5);
 
   fRejectFitPoints=false;
 
@@ -101,11 +182,20 @@ void fitJpsi(const char *inputFile = "../ReadingTree/JpsiRead_18c.root")
 
   fitSignalAndBkg2->SetParameter(7,0.5*hJpsiMinv->GetBinContent(hJpsiMinv->FindBin(3.69))); //normalisation of Psi2s
 
+  if (i==-1)
+  {
+    cJpsiResultsMean[j]= new TCanvas(Form("cJpsiResultsMean_%d",j+1),"Fitting CBE for Jpsi and psi2S and bkg",10,10,700,500);
+    cJpsiResultsMean[j]->SetGrid();
+  }
+  else
+  {
+    cJpsiResults[i][j] = new TCanvas(Form("cJpsiResults_%d_%d",i+1,j+1),"Fitting CBE for Jpsi and psi2S and bkg",10,10,700,500);
+    cJpsiResults[i][j]->SetGrid();
+  }
 
-  TCanvas *c3 = new TCanvas("c3","Fitting CBE for Jpsi and psi2S and bkg",10,10,700,500);
-  c3->SetGrid();
 
-  hJpsiMinv->Fit("fitSignalAndBkg2","V+","ep");
+  //hJpsiMinv->Fit("fitSignalAndBkg2","V+","ep");
+  TFitResultPtr resultFit = hJpsiMinv->Fit("fitSignalAndBkg2","V+S","ep");//S to store the fitResults in the pointer
 
   //--------------------------get the different background and signal functions
 
@@ -146,8 +236,63 @@ void fitJpsi(const char *inputFile = "../ReadingTree/JpsiRead_18c.root")
   fitPsi2SSignal->Draw("same");
 
 
+
+
   // calculate the Jpsi integral and error
-  Double_t intJpsi = fitJpsiSignal->Integral(2,5)/hJpsiMinv->GetBinWidth(1);
+  float errJpsi;
+  float intJpsiTemp = fitJpsiSignal->Integral(2,5)/hJpsiMinv->GetBinWidth(1);
+  //used for the error in case the fit doesn't converge
+
+  //covariant matrix for the error: always symmetric
+  TMatrixDSym cv = resultFit->GetCovarianceMatrix();
+  Double_t covmat[7][7];//size = n params for the jpsi fit
+  for(Int_t i = 0; i < 7; ++i)
+  {
+    for(Int_t j = 0; j < 7; ++j)
+    {
+      if(i<=2 && j<=2)
+      {
+        covmat[i][j] = cv(4+i,4+j);//why the 4 ?? -- only the parameters we are interested about
+        //ie parameters for the Jpsi CBE fit
+      }
+      else
+      {
+        //the alpha and n parameters, which are fixed, so their covariances is 0
+        covmat[i][j] = 0;
+      }
+      printf("%.3e  ",covmat[i][j]);
+
+
+    }
+    printf("\n");
+  }
+
+  if (covmat[0][0] == 0) {
+     // abnormal fit termination
+    printf("Abnormal fit termination.\n");
+    errJpsi=TMath::Sqrt(intJpsiTemp);
+  }
+  else
+    errJpsi = fitJpsiSignal->IntegralError(2,5,&parJpsi[7],&covmat[0][0])/hJpsiMinv->GetBinWidth(1);
+    if (isnan(errJpsi))//happens when the integrand is not behaving as expected
+    {
+      errJpsi=TMath::Sqrt(intJpsiTemp);
+    }
+
+
+  if (i ==-1)//we are integrating over the mult
+  {
+    intJpsiMean[j] = fitJpsiSignal->Integral(2,5)/hJpsiMinv->GetBinWidth(1);
+    hIntJpsiMean->SetBinContent(j+1,fitJpsiSignal->Integral(2,5)/hJpsiMinv->GetBinWidth(1));
+    hIntJpsiMean->SetBinError(j+1,errJpsi);
+  }
+  else//diff in mult and pt
+  {
+    intJpsi[i][j] = fitJpsiSignal->Integral(2,5)/hJpsiMinv->GetBinWidth(1);
+    hIntJpsi->SetBinContent(i+1,j+1,fitJpsiSignal->Integral(2,5)/hJpsiMinv->GetBinWidth(1));
+    hIntJpsi->SetBinError(i+1,j+1,errJpsi);
+  }
+
 
   TLegend *legend=new TLegend(0.6,0.65,0.88,0.85);
   legend->SetTextFont(72);
@@ -159,8 +304,23 @@ void fitJpsi(const char *inputFile = "../ReadingTree/JpsiRead_18c.root")
   legend->AddEntry(fitSignalAndBkg2,"Global fit","l");
   legend->Draw();
 
+  TLatex* tl;
+
+  if(i==-1)
+  {
+    tl = new TLatex(0.6022945,0.2536998,Form("#it{N_{J/#psi}} = %f", intJpsiMean[j]));
+  }
+  else{
+    tl = new TLatex(0.6022945,0.2536998,Form("#it{N_{J/#psi}} = %f", intJpsi[i][j]));
+  }
 
 
+
+  tl->SetNDC();
+  tl->SetTextFont(42);
+  tl->SetTextSize(0.0422833);
+  tl->SetLineWidth(2);
+  tl->Draw();
 
 
 
