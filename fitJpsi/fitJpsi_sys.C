@@ -8,15 +8,13 @@ double fFitRejectRangeHigh =  3.3;
 double fFitRangeLow;
 double fFitRangeHigh;
 
-enum bkgFunction {kPol2Exp, kVWG};
 
-// From 13 TeV pp data fit
+// From 13 TeV pp data fit (from Cvetan)
 // Double_t CB2alpha = 9.79765e-01;
 // Double_t CB2n = 6.96799e+00;
 // Double_t CB2alpha2 = 1.86328e+00;
 // Double_t CB2n2 = 1.49963e+01;
 
-//From the 13 TeV pp fit of Manuel Guittiere's AN
 Double_t CB2alpha;
 Double_t CB2n;
 Double_t CB2alpha2;
@@ -38,6 +36,9 @@ double intJpsi[12][5];//contains the number of jpsi for each mult and pt bins
 double intJpsiMean[5];//contains the number of jpsi for each pt bins (integrated in mult)
 TH2D *hIntJpsi;//the weight is the jpsi integral, for the corresponding (mult,pt) bin
 TH1D *hIntJpsiMean;//the weight is the jpsi integral, for the corresponding pt bin
+
+TH2D *hChi2Fit;//the weight is the chi2/Ndf of the global fit, for the corresponding (mult,pt) bin
+TH1D *hChi2FitMean;//the weight is the chi2/Ndf of the global fit, for the corresponding pt bin
 
 void initFitParams(unsigned int tailParam, unsigned int fitRange)//bkgFunction not used here
 {
@@ -89,14 +90,19 @@ void fitJpsi(unsigned int tailParam, unsigned int bkgFunction, unsigned int fitR
   TAxis *xaxis = hJpsi3D->GetXaxis();//mult bins from hJpsi3D
   TAxis *yaxis = hJpsi3D->GetYaxis();//pT bins from hJpsi3D
 
+  const int nBinsMult = hJpsi3D->GetNbinsX();
+  const int nBinsPt = hJpsi3D->GetNbinsY();
+
 
   hIntJpsi = new TH2D("hIntJpsi", "hIntJpsi", hJpsi3D->GetNbinsX(), xaxis->GetXbins()->GetArray(), hJpsi3D->GetNbinsY(), yaxis->GetXbins()->GetArray());
   //number of jpsi versus mult and pt
-
   hIntJpsiMean = new TH1D("hIntJpsiMean", "hIntJpsiMean", hJpsi3D->GetNbinsY(), yaxis->GetXbins()->GetArray());//number of Jpsi vs pt
 
-  const int nBinsMult = hJpsi3D->GetNbinsX();
-  const int nBinsPt = hJpsi3D->GetNbinsY();
+  hChi2Fit = new TH2D("hChi2Fit", "hChi2Fit", nBinsMult, 0, nBinsMult, nBinsPt, 0, nBinsPt);
+  //number of jpsi versus mult and pt
+  hChi2FitMean = new TH1D("hChi2FitMean", "hChi2FitMean", nBinsPt, 0, nBinsPt);//number of Jpsi vs pt
+
+
 
   TH1D* hJpsi3D_pz[nBinsMult][nBinsPt];
 
@@ -130,6 +136,7 @@ void fitJpsi(unsigned int tailParam, unsigned int bkgFunction, unsigned int fitR
 
 
   hIntJpsi->Write();
+  hChi2Fit->Write();
 
 
   //computing the mean values, integrated over mult
@@ -149,6 +156,7 @@ void fitJpsi(unsigned int tailParam, unsigned int bkgFunction, unsigned int fitR
 
 
   hIntJpsiMean->Write();
+  hChi2FitMean->Write();
 
   hV0CMultCorr->Write("hV0CMultCorr");
 
@@ -181,13 +189,13 @@ void fitJpsi1histogram(int i, int j,TH1D* hJpsiMinv, unsigned int bkgFunction)//
     fitBkgLeft->SetParameter(1,-1.0);//mean
     fitBkgLeft->SetParLimits(1,-10.0,2.0);//mean limits
     fitBkgLeft->SetParameter(2,0.5);//sigma A
-    fitBkgLeft->SetParLimits(0,0.5*hJpsiMinv->GetBinContent(hJpsiMinv->FindBin(2.0)),200*hJpsiMinv->GetBinContent(hJpsiMinv->FindBin(2.0)));// limits of N
+    fitBkgLeft->SetParLimits(0,hJpsiMinv->GetBinContent(hJpsiMinv->FindBin(2.0)),200*hJpsiMinv->GetBinContent(hJpsiMinv->FindBin(2.0)));// limits of N
 
     fitBkgRight->SetParameter(0,2*hJpsiMinv->GetBinContent(hJpsiMinv->FindBin(2.0)));//normalisation
     fitBkgRight->SetParameter(1,-1.0);//mean
     fitBkgRight->SetParLimits(1,-10.0,2.0);//mean limits
     fitBkgRight->SetParameter(2,0.5);//sigma A
-    fitBkgRight->SetParLimits(0,0.5*hJpsiMinv->GetBinContent(hJpsiMinv->FindBin(2.0)),200*hJpsiMinv->GetBinContent(hJpsiMinv->FindBin(2.0)));// limits of N
+    fitBkgRight->SetParLimits(0,hJpsiMinv->GetBinContent(hJpsiMinv->FindBin(2.0)),200*hJpsiMinv->GetBinContent(hJpsiMinv->FindBin(2.0)));// limits of N
 
   }
 
@@ -301,6 +309,7 @@ void fitJpsi1histogram(int i, int j,TH1D* hJpsiMinv, unsigned int bkgFunction)//
   printf("------------------------------------ FIT RESULT STATUS %d, mul bin %d, pt bin %d\n", resultFit->Status(), i+1, j+1);
   //--------------------------get the different background and signal functions
 
+
   //Define the 3 functions, bkg + jpsi signal + psi(2S) signal
   TF1 *fitBkg;
   if(!bkgFunction)
@@ -383,34 +392,33 @@ void fitJpsi1histogram(int i, int j,TH1D* hJpsiMinv, unsigned int bkgFunction)//
   if (covmat[0][0] == 0) {
      // abnormal fit termination
     printf("Abnormal fit termination.\n");
-    errJpsi=TMath::Sqrt(intJpsiTemp);
+    errJpsi=0;
   }
   else
-    errJpsi = fitJpsiSignal->IntegralError(fFitRangeLow,4,&parJpsi[7],&covmat[0][0])/hJpsiMinv->GetBinWidth(1);
+    errJpsi = fitJpsiSignal->IntegralError(fFitRangeLow,4,&parJpsi[0],&covmat[0][0])/hJpsiMinv->GetBinWidth(1);
     if (isnan(errJpsi))//happens when the integrand is not behaving as expected
     {
-      errJpsi = fitJpsiSignal->IntegralError(2.0,3.4,&parJpsi[7],&covmat[0][0])/hJpsiMinv->GetBinWidth(1);
-      printf("---- Error was nan, range changed\n");
-      if (isnan(errJpsi))//happens when the integrand is not behaving as expected
-      {
-        errJpsi=TMath::Sqrt(intJpsiTemp);
-        printf("---- Error still nan, give up\n");
-      }
-
+      errJpsi = fitJpsiSignal->IntegralError(2.0,3.4,&parJpsi[0],&covmat[0][0])/hJpsiMinv->GetBinWidth(1);
     }
 
+
+  float chi2OverNdf=resultFit->Chi2()/resultFit->Ndf();
 
   if (i ==-1)//we are integrating over the mult
   {
     intJpsiMean[j] = fitJpsiSignal->Integral(2,4)/hJpsiMinv->GetBinWidth(1);
     hIntJpsiMean->SetBinContent(j+1,fitJpsiSignal->Integral(2,4)/hJpsiMinv->GetBinWidth(1));
     hIntJpsiMean->SetBinError(j+1,errJpsi);
+
+    hChi2FitMean->SetBinContent(j+1,chi2OverNdf);
   }
   else//diff in mult and pt
   {
     intJpsi[i][j] = fitJpsiSignal->Integral(2,4)/hJpsiMinv->GetBinWidth(1);
     hIntJpsi->SetBinContent(i+1,j+1,fitJpsiSignal->Integral(2,4)/hJpsiMinv->GetBinWidth(1));
     hIntJpsi->SetBinError(i+1,j+1,errJpsi);
+
+    hChi2Fit->SetBinContent(i+1,j+1,chi2OverNdf);
   }
 
 

@@ -38,3 +38,18 @@ Problem with the finest bins with high mult
 
 
 binsV0C("/Volumes/T7Shield/SARAH/JpsiV0M/myTaskv2/18e_AnalysisResults.root","hV0CMultCorr","JpsiVsV0M/kINT7Histograms")
+
+
+---
+With the correct single muon event correction (02/11/2023):
+JpsiRead_18d.root
+
+
+---
+With AnalysisResults produced with runAnalisys vNov2 (15/11/2023)
+
+.L binsV0C.C
+binsV0C("JpsiRead_18d_vNov2.root","hV0CMultCorrCopy")
+
+
+readTree("/Volumes/T7Shield/SARAH/JpsiV0M/myTaskv2/18d_vNov2_AnalysisResults.root","18d_vNov2")

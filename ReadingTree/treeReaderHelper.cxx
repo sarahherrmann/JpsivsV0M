@@ -175,18 +175,7 @@ void treeReaderHelper::readEvents(TTree *tr)
 
      processDimuons();//fills some dimuon histograms and applies dimuon cuts
 
-
-
    }
-
-   //2nd loop to correct the mult with dimuon events correction
-    for (Long64_t i=0;i<nentries;i++)
-    {
-      tr->GetEntry(i);
-
-      processDimuons(false);//applies dimuon cuts and fills corrected mult Minv histogram
-    }
-
 
 }//readTree
 
@@ -304,12 +293,13 @@ void treeReaderHelper::fillCorrFactorMap()
     corrFactor=meanSignal-meanPedestal;
     //computed the corrfactor and now store it in fChannelToCorrFactor[ichannel]
 	 fChannelToCorrFactor[ichannel]=corrFactor;
+  }
 
 }
 
 
 
-void treeReaderHelper::processDimuons(bool IsFirstTime = true)
+void treeReaderHelper::processDimuons()
 {
   //================================= Dimuons =================================
 
@@ -329,32 +319,22 @@ void treeReaderHelper::processDimuons(bool IsFirstTime = true)
 
       Double_t pT = CalcPt(track1,track2);//pT of dimuon
 
-      // Int_t ptBinJpsi = fJpsiPtAxis -> FindBin(pT);
-      // if (ptBinJpsi<1 || ptBinJpsi>fNbinsJpsiPt) continue;//underflow or overflow , ignore
       Double_t y = CalcY(track1,track2);//rapidity of dimuon
       if (y < fJpsiEtaMin || y > fJpsiEtaMax) continue;//cut on rapidity
 
 
       //al the cuts have been applied, now fill histograms
-      if (IsFirstTime)
-      {
-        fJpsiPt->Fill(pT);
-        fJpsiMinv->Fill(minv);
-        hMultPtJpsiMinv->Fill(fv0cmultcorr,pT,minv);
+
+      fJpsiPt->Fill(pT);
+      fJpsiMinv->Fill(minv);
+      hMultPtJpsiMinv->Fill(fv0cmultcorr,pT,minv);
 
 
-        Float_t correctedfv0cmultcorrFirstCorr = correctDimuons(track1,track2);
-      }
+      Float_t correctedfv0cmultcorr = correctDimuons(track1,track2);
 
+      hMultPtJpsiMinvCorr->Fill(correctedfv0cmultcorr,pT,minv);
 
-      if (!IsFirstTime)
-      {
-        Float_t correctedfv0cmultcorr = correctDimuons(track1,track2, true);//correction with dimuon events, different than before
-
-        hMultPtJpsiMinvCorr->Fill(correctedfv0cmultcorr,pT,minv);
-
-        hMultMinusMultCorr->Fill(fv0cmultcorr-correctedfv0cmultcorr);
-      }
+      hMultMinusMultCorr->Fill(fv0cmultcorr-correctedfv0cmultcorr);
 
 
 
@@ -363,10 +343,9 @@ void treeReaderHelper::processDimuons(bool IsFirstTime = true)
 
 }
 
-Float_t treeReaderHelper::correctDimuons(AliAODTrack *track1, AliAODTrack *track2, bool IsCorrWithDiMu = false)
+Float_t treeReaderHelper::correctDimuons(AliAODTrack *track1, AliAODTrack *track2)
 {
-  //if IsCorrWithDiMu==true then this code has already ran once on all the tree, has filled the histograms fEtaPhiMeanV0DiMuonEv
-  //and we can now derive the new correction, based on dimuon events
+
   Float_t correctedformuons_fv0mult;
 
   //---------------------------------- muon 1 ----------------------------------
@@ -377,42 +356,13 @@ Float_t treeReaderHelper::correctDimuons(AliAODTrack *track1, AliAODTrack *track
   //if not -1
 
   //Note: the histograms of the mean value of mult for each fv0 channels are already filled
-  //the histograms named fEtaPhiV0MeanPerChannelOneMu[ichannel]
+  //the histograms named fEtaPhiV0MeanPerChannelOneMu[ichannel], these are used in
+  //fChannelToCorrFactor
 
-  //Now for the correction, we need to retrieve the channels at +pi/2 and -pi/2 from channel 1
-  //in the same eta ring
-
-  float signalChannel1;
-  float meanPedestal1=0.;
-
-  std::pair<int, int> channelsAcross1;
-
+  float corrFactor1=0.;
   if (channel1 != -1)
   {
-    //initial signal in channel 1
-    signalChannel1=fv0mult[channel1];
-
-    //mean eta and phi position of channel1 (to retrieve the pedestal)
-    float etaMi = AliVVZERO::GetVZEROEtaMin(channel1) + 0.25;
-    float phiMi = AliVVZERO::GetVZEROAvgPhi(channel1);
-
-    channelsAcross1 = fChannelAccrossChannelId[channel1];
-
-    if(!IsCorrWithDiMu)
-    {
-      meanPedestal1 = fEtaPhiV0MeanPerChannelOneMu[channelsAcross1.first]->GetBinContent(fEtaPhiV0MeanPerChannelOneMu[channelsAcross1.first]->FindBin(etaMi,phiMi));
-      meanPedestal1+= fEtaPhiV0MeanPerChannelOneMu[channelsAcross1.second]->GetBinContent(fEtaPhiV0MeanPerChannelOneMu[channelsAcross1.second]->FindBin(etaMi,phiMi));
-    }
-    else
-    {
-      //we want to use dimuon event correction
-      meanPedestal1 = fEtaPhiMeanV0DiMuonEv[channelsAcross1.first]->GetBinContent(fEtaPhiMeanV0DiMuonEv[channelsAcross1.first]->FindBin(etaMi,phiMi));
-      meanPedestal1+= fEtaPhiMeanV0DiMuonEv[channelsAcross1.second]->GetBinContent(fEtaPhiMeanV0DiMuonEv[channelsAcross1.second]->FindBin(etaMi,phiMi));
-    }
-
-
-    meanPedestal1 = meanPedestal1/2.f;
-
+    corrFactor1 = fChannelToCorrFactor[channel1];//delta_i
   }
 
   //---------------------------------- muon 2 ----------------------------------
@@ -422,38 +372,13 @@ Float_t treeReaderHelper::correctDimuons(AliAODTrack *track1, AliAODTrack *track
   int channel2 = GetChannelFromEtaPhi(eta2, phi2);//channel hit by muon 2
   //if not -1
 
-  float signalChannel2;
-  float meanPedestal2=0.;
-
-  std::pair<int, int> channelsAcross2;
-
+  float corrFactor2=0.;
   if (channel2 != -1)
   {
-    //initial signal in channel 2
-    signalChannel2=fv0mult[channel2];
-
-    //mean eta and phi position of channel2 (to retrieve the pedestal)
-    float etaMi = AliVVZERO::GetVZEROEtaMin(channel2) + 0.25;
-    float phiMi = AliVVZERO::GetVZEROAvgPhi(channel2);
-
-    channelsAcross2 = fChannelAccrossChannelId[channel2];
-
-    if(!IsCorrWithDiMu)
-    {
-      meanPedestal2 = fEtaPhiV0MeanPerChannelOneMu[channelsAcross2.first]->GetBinContent(fEtaPhiV0MeanPerChannelOneMu[channelsAcross2.first]->FindBin(etaMi,phiMi));
-      meanPedestal2+= fEtaPhiV0MeanPerChannelOneMu[channelsAcross2.second]->GetBinContent(fEtaPhiV0MeanPerChannelOneMu[channelsAcross2.second]->FindBin(etaMi,phiMi));
-    }
-    else
-    {
-      meanPedestal2 = fEtaPhiMeanV0DiMuonEv[channelsAcross2.first]->GetBinContent(fEtaPhiMeanV0DiMuonEv[channelsAcross2.first]->FindBin(etaMi,phiMi));
-      meanPedestal2+= fEtaPhiMeanV0DiMuonEv[channelsAcross2.second]->GetBinContent(fEtaPhiMeanV0DiMuonEv[channelsAcross2.second]->FindBin(etaMi,phiMi));
-    }
-
-
-    meanPedestal2 = meanPedestal2/2.f;
-
+    corrFactor2 = fChannelToCorrFactor[channel2];//delta_i
   }
 
+  //----------------------------------------------------------------------------
 
   int type=0;//1 is muon in channel 1 only, 2 is muon in channel 2 only, 3 is muon in channel 1 & 2
 
@@ -462,123 +387,33 @@ Float_t treeReaderHelper::correctDimuons(AliAODTrack *track1, AliAODTrack *track
     return fv0cmultcorr;//return the mult without additionnal correction
   }
 
-  if (channel1 != -1 && channel2 == -1)
-  {
-    //fDiMuCorrectionWDiMuEv[channel1]->Fill(signalChannel1-meanPedestal1);
-
-    type=1;
-
-    //TEMPORARY: beware, the fDimuCorrection before contained the signle mu correction
-    if (IsCorrWithDiMu)
-    {
-      fDiMuCorrectionWDiMuEv[channel1]->Fill(signalChannel1-meanPedestal1);
-    }
-    else
-    {
-      fDiMuCorrectionWSiMuEv[channel1]->Fill(signalChannel1-meanPedestal1);
-    }
-
-    if (!IsCorrWithDiMu)
-    {
-      //we have not yet filled the histograms needed for dimuon correction
-      //necessarely channeliP and channeliM are not touched by a muon: fill the histogram
-      for (int ichannel=0; ichannel<32; ichannel++)
-      {
-        float etaMi = AliVVZERO::GetVZEROEtaMin(ichannel) + 0.25;
-        float phiMi = AliVVZERO::GetVZEROAvgPhi(ichannel);
-        fEtaPhiMeanV0DiMuonEv[channel1]->Fill(etaMi, phiMi, fv0mult[ichannel]);
-      }
-    }
-
-  }
-
-  if (channel1 == -1 && channel2 != -1)
-  {
-
-    type=2;
-    if (IsCorrWithDiMu)
-    {
-      //beware: the correction tactic is not really the same
-      fDiMuCorrectionWDiMuEv[channel2]->Fill(signalChannel2-meanPedestal2);
-    }
-    else
-    {
-      fDiMuCorrectionWSiMuEv[channel2]->Fill(signalChannel2-meanPedestal2);
-    }
-
-    if (!IsCorrWithDiMu)
-    {
-      //we have not yet filled the histograms needed for dimuon correction
-      //necessarely channeliP and channeliM are not touched by a muon: fill the histogram
-      for (int ichannel=0; ichannel<32; ichannel++)
-      {
-        float etaMi = AliVVZERO::GetVZEROEtaMin(ichannel) + 0.25;
-        float phiMi = AliVVZERO::GetVZEROAvgPhi(ichannel);
-        fEtaPhiMeanV0DiMuonEv[channel2]->Fill(etaMi, phiMi, fv0mult[ichannel]);
-      }
-    }
-
-
-  }
-
-  if (channel1 != -1 && channel2 != -1)//both muons hit
-  {
-
-    type=3;
-
-    if (IsCorrWithDiMu)
-    {
-      fDiMuCorrectionWDiMuEv[channel1]->Fill(signalChannel1-meanPedestal1);
-      fDiMuCorrectionWDiMuEv[channel2]->Fill(signalChannel2-meanPedestal2);
-    }
-    else
-    {
-      fDiMuCorrectionWSiMuEv[channel2]->Fill(signalChannel2-meanPedestal2);
-    }
-
-    if(channel2 != channelsAcross1.first && channel2 != channelsAcross1.second && !IsCorrWithDiMu)
-    {
-      //the second muon didn't touch the channels across from channel1 at +-pi/2
-      //necessarely channeliP and channeliM are not touched by a muon: fill the histogram
-      for (int ichannel=0; ichannel<32; ichannel++)
-      {
-        float etaMi = AliVVZERO::GetVZEROEtaMin(ichannel) + 0.25;
-        float phiMi = AliVVZERO::GetVZEROAvgPhi(ichannel);
-        fEtaPhiMeanV0DiMuonEv[channel1]->Fill(etaMi, phiMi, fv0mult[ichannel]);
-      }
-    }
-
-    if(channel1 != channelsAcross2.first && channel1 != channelsAcross2.second && !IsCorrWithDiMu)
-    {
-      //the second muon didn't touch the channels across from channel1 at +-pi/2
-      //necessarely channeliP and channeliM are not touched by a muon: fill the histogram
-      for (int ichannel=0; ichannel<32; ichannel++)
-      {
-        float etaMi = AliVVZERO::GetVZEROEtaMin(ichannel) + 0.25;
-        float phiMi = AliVVZERO::GetVZEROAvgPhi(ichannel);
-        fEtaPhiMeanV0DiMuonEv[channel2]->Fill(etaMi, phiMi, fv0mult[ichannel]);
-      }
-    }
-  }
-
   float V0CMult=fv0cmultTot;
   //recorrect with ESD utils the V0C mult, with fzvtx
 
   //since fv0cmultTot is just the sum of the signal in each channel, I can just substract the corrections
 
-  if (type==1)
+
+  if (channel1 != -1 && channel2 == -1)
   {
-    V0CMult=V0CMult-signalChannel1+meanPedestal1;//equivalent to meanpedestal1+rest of channels' signal
-  }
-  if (type==2)
-  {
-    V0CMult=V0CMult-signalChannel2+meanPedestal2;//equivalent to meanpedestal2+rest of channels' signal
-  }
-  if (type==3)
-  {
-    V0CMult=V0CMult-signalChannel1-signalChannel2+meanPedestal1+meanPedestal2;
+    //muon 1 only hit channel
+    fDiMuCorrectionWSiMuEv[channel1]->Fill(fv0mult[channel1]-corrFactor1);
+    V0CMult=V0CMult-corrFactor1;
   }
 
+  if (channel1 == -1 && channel2 != -1)
+  {
+    //muon 2 only hit channel
+    fDiMuCorrectionWSiMuEv[channel2]->Fill(fv0mult[channel2]-corrFactor2);
+    V0CMult=V0CMult-corrFactor2;
+  }
+
+  if (channel1 != -1 && channel2 != -1)//both muons hit
+  {
+    fDiMuCorrectionWSiMuEv[channel1]->Fill(fv0mult[channel1]-corrFactor1);
+    fDiMuCorrectionWSiMuEv[channel2]->Fill(fv0mult[channel2]-corrFactor2);
+
+    V0CMult=V0CMult-corrFactor1-corrFactor2;
+  }
 
   correctedformuons_fv0mult = AliESDUtils::GetCorrV0C(V0CMult,fzvtx);
 

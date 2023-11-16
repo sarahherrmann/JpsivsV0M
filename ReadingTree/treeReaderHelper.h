@@ -46,7 +46,7 @@ class treeReaderHelper
 
      fNV0OverNV0Mean = new TH1F("fNV0OverNV0Mean","fNV0OverNV0Mean",5000,0,50);
      fNV0COverNV0CMean = new TH1F("fNV0COverNV0CMean","fNV0COverNV0CMean",20000,0,200);
-     hV0CMultCorrCopy = new TH1F("hV0CMultCorrCopy","hV0CMultCorrCopy",20000,0,10000);
+     hV0CMultCorrCopy = new TH1F("hV0CMultCorrCopy","hV0CMultCorrCopy",600000,0,3000);
 
 
      hV0CMultInSingleMu = new TH1F("hV0CMultInSingleMu","hV0CMultInSingleMu",20000,0,10000);
@@ -166,10 +166,10 @@ class treeReaderHelper
    std::map<int, float> fChannelToCorrFactor;//key: index of the channel
    //value: the correction factor deltai for that channel
 
-   void processDimuons(bool IsFirstTime = true);//fills some dimuon histograms and applies dimuon cuts, if IsFirstTime=false, then does the correction for dimuon and fills the corrected histogram
-   Float_t correctDimuons(AliAODTrack *track1, AliAODTrack *track2, bool IsCorrWithDiMu = false);//applies the correction for muons on the fv0cmult
+   void processDimuons();//fills some dimuon histograms and applies dimuon cuts, if IsFirstTime=false, then does the correction for dimuon and fills the corrected histogram
+   Float_t correctDimuons(AliAODTrack *track1, AliAODTrack *track2);//applies the correction for muons on the fv0cmult
    //returns the corrected total fv0c mult, for dimuon contribution and the fzvtx corr from ESDUtils
-   //weight is the ratio of the V0C mult in dimuon ev / V0C mult in single muon ev
+
 
 
    void bringTo02Pi(float& phi);//bring any phi angle to [0,2pi]

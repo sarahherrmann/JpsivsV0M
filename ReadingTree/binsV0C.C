@@ -4,7 +4,7 @@ void binsV0C(const char *fn = "JpsiRead_18c.root", const char *hname = "hV0CMult
   //TH1F *h = (TH1F*)f->Get("fNV0COverNV0CMean");
 
   TH1F *h;
-  if (*listname)//the pointer is not NULL
+  if (listname)//the pointer is not NULL
   {
     //then the histogram is actually in a histolist, we have to retrive the list first
     TList *histoList = (TList *)f->Get(listname);
@@ -18,7 +18,8 @@ void binsV0C(const char *fn = "JpsiRead_18c.root", const char *hname = "hV0CMult
   Float_t totalEntries = h->GetEntries();
 
   // Example works for n mult intervals
-  Float_t targetPercentiles[] = {0.298,0.199,0.099,0.099,0.099,0.0498,0.0498,0.0498,0.0398,0.099};
+  //Float_t targetPercentiles[] = {0.298,0.199,0.099,0.099,0.099,0.0498,0.0498,0.0498,0.0398,0.099};
+  Float_t targetPercentiles[] = {0.30,0.20,0.1,0.1,0.1,0.05,0.05,0.05,0.04,0.1};
   //corresponding percentiles ranges 100-70%, 70-50, 50-40, 40-30, 30-20, 20-15, 15-10, 10-5, 5-1, 1-0
 
   //Float_t targetPercentiles[] = {0.298,0.199,0.099,0.099,0.099,0.0498,0.0498,0.0498,0.0398,0.0049,0.00249,0.00249};

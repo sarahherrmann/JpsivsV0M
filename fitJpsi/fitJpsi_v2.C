@@ -1,20 +1,29 @@
 const int npx = 5000;//number of points for TF1
 enum paramCBE {kNorm, kMean, kSigma, kAlpha, kN, kAlphap, kNp, kNparamsCBE};
 int nParamsPol2Exp = 4;
-bool fRejectFitPoints = true;
+bool fRejectFitPoints = true;//reject point for background functions
 double fFitRejectRangeLow = 2.7;
 double fFitRejectRangeHigh =  3.3;
 
+enum bkgFunction {kPol2Exp, kVWG};
+
 // From 13 TeV pp data fit
-Double_t CB2alpha = 9.79765e-01;
-Double_t CB2n = 6.96799e+00;
-Double_t CB2alpha2 = 1.86328e+00;
-Double_t CB2n2 = 1.49963e+01;
+// Double_t CB2alpha = 9.79765e-01;
+// Double_t CB2n = 6.96799e+00;
+// Double_t CB2alpha2 = 1.86328e+00;
+// Double_t CB2n2 = 1.49963e+01;
+
+//From the 13 TeV pp data fit of Manuel Guittiere's AN
+Double_t CB2alpha = 0.883;
+Double_t CB2n = 9.940;
+Double_t CB2alpha2 = 1.832;
+Double_t CB2n2 = 15.323;
 
 Double_t functionSignalCrystalBallExtended(Double_t *x,Double_t *par);
 Double_t functionBackgroundPol2Exp(Double_t *x, Double_t *par);
 Double_t functionSignalCBEBackgroundPol2Exp(Double_t *x, Double_t *par);
 Double_t functionSignal2CBEBackgroundPol2Exp(Double_t *x, Double_t *par);
+Double_t fVWG2(Double_t *x, Double_t *par);//Variable width gaussain, bkground funtion
 
 void fitJpsi1histogram(int i, int j, TH1D* hJpsiMinv);
 
@@ -120,7 +129,7 @@ void fitJpsi1histogram(int i, int j,TH1D* hJpsiMinv)//fit the histogram correspo
   fitBkgLeft->SetLineWidth(4);
   fitBkgLeft->SetLineColor(kBlack);
 
-  hJpsiMinv->Fit("fitBkgLeft","0","ep", 2, fFitRejectRangeLow);
+  hJpsiMinv->Fit("fitBkgLeft","0q","ep", 2, fFitRejectRangeLow);
 
   double parBkgLeft[4];
   fitBkgLeft->GetParameters(parBkgLeft);
@@ -130,7 +139,7 @@ void fitJpsi1histogram(int i, int j,TH1D* hJpsiMinv)//fit the histogram correspo
   fitBkgRight->SetLineWidth(4);
   fitBkgRight->SetLineColor(kBlack);
 
-  hJpsiMinv->Fit("fitBkgLeft","0","ep", fFitRejectRangeHigh, 5);
+  hJpsiMinv->Fit("fitBkgLeft","0q","ep", fFitRejectRangeHigh, 5);
 
   double parBkgRight[4];
   fitBkgRight->GetParameters(parBkgRight);
@@ -152,7 +161,7 @@ void fitJpsi1histogram(int i, int j,TH1D* hJpsiMinv)//fit the histogram correspo
   fitBkgPrelim->SetParameter(2,(parBkgRight[2]+parBkgLeft[2])/2.0);
   fitBkgPrelim->SetParameter(3,(parBkgRight[3]+parBkgLeft[3])/2.0);
 
-  hJpsiMinv->Fit("fitBkgPrelim","0","ep", 2, 5);//hJpsiMinv->Fit("fitBkgPrelim","V+","ep", 2, 5);
+  hJpsiMinv->Fit("fitBkgPrelim","0q","ep", 2, 5);//hJpsiMinv->Fit("fitBkgPrelim","V+","ep", 2, 5);
 
   fRejectFitPoints=false;
 
@@ -240,7 +249,7 @@ void fitJpsi1histogram(int i, int j,TH1D* hJpsiMinv)//fit the histogram correspo
 
   // calculate the Jpsi integral and error
   float errJpsi;
-  float intJpsiTemp = fitJpsiSignal->Integral(2,5)/hJpsiMinv->GetBinWidth(1);
+  float intJpsiTemp = fitJpsiSignal->Integral(2,4)/hJpsiMinv->GetBinWidth(1);
   //used for the error in case the fit doesn't converge
 
   //covariant matrix for the error: always symmetric
@@ -273,7 +282,7 @@ void fitJpsi1histogram(int i, int j,TH1D* hJpsiMinv)//fit the histogram correspo
     errJpsi=TMath::Sqrt(intJpsiTemp);
   }
   else
-    errJpsi = fitJpsiSignal->IntegralError(2,5,&parJpsi[7],&covmat[0][0])/hJpsiMinv->GetBinWidth(1);
+    errJpsi = fitJpsiSignal->IntegralError(2,4,&parJpsi[7],&covmat[0][0])/hJpsiMinv->GetBinWidth(1);
     if (isnan(errJpsi))//happens when the integrand is not behaving as expected
     {
       errJpsi=TMath::Sqrt(intJpsiTemp);
@@ -282,14 +291,14 @@ void fitJpsi1histogram(int i, int j,TH1D* hJpsiMinv)//fit the histogram correspo
 
   if (i ==-1)//we are integrating over the mult
   {
-    intJpsiMean[j] = fitJpsiSignal->Integral(2,5)/hJpsiMinv->GetBinWidth(1);
-    hIntJpsiMean->SetBinContent(j+1,fitJpsiSignal->Integral(2,5)/hJpsiMinv->GetBinWidth(1));
+    intJpsiMean[j] = fitJpsiSignal->Integral(2,4)/hJpsiMinv->GetBinWidth(1);
+    hIntJpsiMean->SetBinContent(j+1,fitJpsiSignal->Integral(2,4)/hJpsiMinv->GetBinWidth(1));
     hIntJpsiMean->SetBinError(j+1,errJpsi);
   }
   else//diff in mult and pt
   {
-    intJpsi[i][j] = fitJpsiSignal->Integral(2,5)/hJpsiMinv->GetBinWidth(1);
-    hIntJpsi->SetBinContent(i+1,j+1,fitJpsiSignal->Integral(2,5)/hJpsiMinv->GetBinWidth(1));
+    intJpsi[i][j] = fitJpsiSignal->Integral(2,4)/hJpsiMinv->GetBinWidth(1);
+    hIntJpsi->SetBinContent(i+1,j+1,fitJpsiSignal->Integral(2,4)/hJpsiMinv->GetBinWidth(1));
     hIntJpsi->SetBinError(i+1,j+1,errJpsi);
   }
 
@@ -402,4 +411,26 @@ Double_t functionSignal2CBEBackgroundPol2Exp(Double_t *x, Double_t *par)
   //Sigma psi(2S) = Sigma(Jpsi)*1.05
   return functionBackgroundPol2Exp(x,par) + functionSignalCrystalBallExtended(x,parJpsi) + functionSignalCrystalBallExtended(x,parPsi2S);
   //bckg + jpsi + psi(2S)
+}
+
+Double_t fVWG2(Double_t *x, Double_t *par)
+{
+  //Variable Width Gaussian with pol2 sigma
+  //4 parameters
+  Double_t m = x[0];
+  Double_t c1 = par[0];
+  Double_t c2 = par[1];
+  Double_t c3 = par[2];
+  Double_t c4 = par[3];
+
+  Double_t t = (m-c1)/c1;
+  Double_t sigma = c2 + c3*t + c4*t*t;
+
+  if (fRejectFitPoints &&  x[0] > fFitRejectRangeLow && x[0] < fFitRejectRangeHigh )
+  {
+    TF1::RejectPoint();
+    return 0.;
+  }
+
+  return TMath::Exp(-(m-c1)*(m-c1)/(2.*sigma*sigma));
 }

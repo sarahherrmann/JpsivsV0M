@@ -3,7 +3,8 @@
 // specify includes for those. for your own task however, you (probably) have not generated a
 // pcm file, so we need to include it explicitly
 #include "AliAnaTaskJpsiVsV0M.h"
-
+#include "/Users/herrmann/aliceAli/AliPhysics/OADB/macros/AddTaskPhysicsSelection.C"
+#include "/Users/herrmann/aliceAli/AliPhysics/OADB/COMMON/MULTIPLICITY/macros/AddTaskMultSelection.C"
 // LHC18b
 Int_t runList18b[] = { 285447, 285396, 285365, 285364, 285347, 285328, 285327, 285291, 285290, 285289, 285287, 285286, 285224, 285222, 285203, 285202, 285200, 285165, 285127, 285125, 285108, 285106, 285066, 285065, 285064, 285015, 285014, 285013, 285012, 285011, 285010, 285009, 285008 };
 // LHC18c
@@ -14,6 +15,10 @@ Int_t runList18d[] = { 286350, 286349, 286348, 286345, 286340, 286337, 286336, 2
 Int_t runList18e[] = { 286937, 286936, 286933, 286932, 286931, 286930, 286911, 286910, 286908, 286907, 286877, 286876, 286874, 286852, 286850, 286848, 286846, 286810, 286809, 286805, 286801, 286799, 286731, 286695, 286661, 286653, 286633, 286594, 286592, 286591, 286569, 286568, 286567, 286566, 286509, 286508, 286502, 286501, 286455, 286454, 286428, 286427, 286426, 286380 };
 // LHC18f
 Int_t runList18f[] = { 287977, 287975, 287941, 287923, 287784, 287783, 287658, 287657, 287656, 287654, 287578, 287576, 287575, 287573, 287524, 287521, 287520, 287518, 287517, 287516, 287513, 287486, 287484, 287481, 287480, 287451, 287413, 287389, 287388, 287387, 287385, 287381, 287380, 287360, 287358, 287356, 287355, 287353, 287349, 287347, 287346, 287344, 287343, 287325, 287324, 287323, 287283, 287254, 287251, 287250, 287249, 287248, 287209, 287208, 287204, 287203, 287202, 287201, 287155, 287137, 287077, 287072, 287071, 287066, 287064, 287063, 287021, 287000 };
+
+// LHC18f 1 run
+Int_t runList18f1[] = {287000};
+
 // LHC18l
 Int_t runList18l[] = { 289971, 289966, 289943, 289941, 289940, 289935, 289931, 289928, 289888, 289884, 289880, 289857, 289856, 289855, 289852, 289849, 289830, 289816, 289815, 289814, 289811, 289808, 289775, 289757, 289731, 289729, 289724, 289723, 289721, 289666, 289664, 289660, 289659, 289658, 289657, 289654, 289632, 289626, 289625, 289582, 289581, 289579, 289577, 289576, 289574, 289547, 289494, 289493, 289468, 289466, 289465, 289463, 289462, 289444, 289426, 289373, 289370, 289369, 289368, 289367, 289366, 289365, 289363, 289356, 289355, 289354, 289353, 289309, 289308, 289306, 289303, 289300, 289280, 289278, 289277, 289276, 289275, 289254, 289253, 289249, 289247, 289243, 289242, 289241, 289240 };
 // LHC18m
@@ -28,6 +33,11 @@ Int_t runList18o[] = { 293898, 293896, 293893, 293891, 293886, 293856, 293831, 2
 Int_t runList18p[] = { 294925, 294916, 294884, 294883, 294880, 294877, 294875, 294852, 294818, 294817, 294816, 294815, 294813, 294809, 294775, 294774, 294772, 294769, 294749, 294747, 294743, 294742, 294741, 294722, 294721, 294718, 294716, 294715, 294710, 294703, 294653, 294636, 294634, 294633, 294632, 294593, 294591, 294590, 294588, 294587, 294586, 294563, 294558, 294556, 294553, 294531, 294530, 294529, 294527, 294526, 294525, 294524, 294503, 294502, 294310, 294308, 294307, 294305, 294242, 294241, 294212, 294210, 294208, 294205, 294201, 294200, 294199, 294156, 294155, 294154, 294152, 294131, 294128, 294013, 294012, 294011, 294010, 294009 };
 // LHC17h
 Int_t runList17h[] = { 273103, 273101, 273100, 273099, 273077, 273010, 273009, 272985, 272983, 272976, 272949, 272947, 272939, 272935, 272934, 272933, 272932, 272905, 272903, 272880, 272873, 272871, 272870, 272836, 272835, 272834, 272833, 272829, 272828, 272784, 272783, 272782, 272764, 272763, 272762, 272760, 272755, 272753, 272749, 272747, 272746, 272712, 272692, 272691, 272690, 272620, 272619, 272610, 272608, 272607, 272585, 272577, 272575, 272574, 272521, 272469, 272468, 272466, 272463, 272462, 272461, 272417, 272414, 272413, 272411, 272400, 272399, 272395, 272394, 272389, 272388, 272360, 272359, 272340, 272335, 272194, 272156, 272155, 272154, 272153, 272152, 272151, 272123, 272101, 272100, 272076, 272075, 272042, 272041, 272040, 272039, 272038, 272036, 272034, 272033, 272032, 272031, 272030, 272029, 272025, 272021, 272020, 272018, 271970, 271969, 271962, 271955, 271953, 271946, 271925, 271921, 271916, 271915, 271912, 271911, 271908, 271886, 271881, 271880, 271879, 271878, 271874, 271873, 271871, 271870, 271868 };
+
+// LHC17h
+Int_t runList17hManuel[] = { 273103, 273101, 273100, 273099, 273077, 273010, 273009, 272985, 272983, 272976, 272949, 272947, 272939, 272935, 272934, 272933, 272932, 272905, 272903, 272880, 272873, 272871, 272870, 272836, 272835, 272834, 272833, 272829, 272828, 272784, 272783, 272782, 272762, 272760, 272749, 272747, 272746, 272692, 272691, 272620, 272619, 272608, 272607, 272585, 272577, 272575, 272574, 272521, 272469,
+272468, 272466, 272463, 272462, 272461, 272414, 272413, 272411, 272400, 272394, 272360, 272359, 272335, 272194, 272156, 272155, 272154, 272153, 272152, 272151, 272123, 272101, 272100, 272076, 272075, 272042, 272041, 272040, 272039, 272038, 272036, 272034, 272030, 272029, 272025, 272020, 271970, 271969, 271962, 271955, 271953, 271946, 271925, 271921, 271915, 271912, 271886, 271879, 271878, 271874, 271873, 271871, 271870, 271868 };
+
 // LHC17i
 Int_t runList17i[] = { 274442, 274390, 274387, 274385, 274364, 274363, 274360, 274357, 274355, 274329, 274283, 274281, 274280, 274278, 274276, 274271, 274270, 274269, 274268, 274266, 274264, 274263, 274259, 274232, 274212, 274148, 274147, 274125, 274094, 274092, 274064, 274063, 274058, 273986, 273985, 273946, 273942, 273918, 273889, 273887, 273886, 273885, 273825, 273824, 273719, 273711, 273709, 273695, 273690, 273689, 273687, 273654, 273653, 273593, 273592, 273591 };
 // LHC17k
@@ -58,7 +68,7 @@ Int_t runList16o[] = { 264035, 264033, 263985, 263984, 263981, 263979, 263978, 2
 Int_t runList16p[] = { 264347, 264346, 264345, 264341, 264336, 264312, 264305, 264281, 264279, 264277, 264273, 264267, 264266, 264265, 264264, 264262, 264261, 264260, 264259, 264238, 264233, 264232, 264198, 264197, 264194, 264188, 264168, 264164, 264139, 264138, 264137, 264129, 264110, 264109, 264086, 264085, 264082, 264078, 264076 };
 
 
-void runAnalysisONGRID_full(const char *fperiod = "18b", Int_t subset = 0, Bool_t merge = kFALSE, Bool_t mergeJDL = kTRUE, Bool_t local = kFALSE)
+void runAnalysisONGRID_full_vNov2(const char *fperiod = "18b", Int_t subset = 0, Bool_t merge = kFALSE, Bool_t mergeJDL = kTRUE, Bool_t local = kFALSE)
 {
     // set if you want to run the analysis locally (kTRUE), or on grid (kFALSE)
     //Bool_t local = kFALSE;
@@ -73,7 +83,11 @@ void runAnalysisONGRID_full(const char *fperiod = "18b", Int_t subset = 0, Bool_
     else if (periodStr.Contains("18c")) { runList = runList18c; nRuns = sizeof(runList18c)/sizeof(runList18c[0]); }
     else if (periodStr.Contains("18d")) { runList = runList18d; nRuns = sizeof(runList18d)/sizeof(runList18d[0]); }
     else if (periodStr.Contains("18e")) { runList = runList18e; nRuns = sizeof(runList18e)/sizeof(runList18e[0]); }
-    else if (periodStr.Contains("18f")) { runList = runList18f; nRuns = sizeof(runList18f)/sizeof(runList18f[0]); }
+
+    else if (periodStr.Contains("18f") && subset == 1) { runList = runList18f1; nRuns = sizeof(runList18f1)/sizeof(runList18f1[0]); }
+
+    else if (periodStr.Contains("18f") && subset <= 0) { runList = runList18f; nRuns = sizeof(runList18f)/sizeof(runList18f[0]); }
+
     else if (periodStr.Contains("18l")) { runList = runList18l; nRuns = sizeof(runList18l)/sizeof(runList18l[0]); }
     else if (periodStr.Contains("18m") && subset <= 0) { runList = runList18m; nRuns = sizeof(runList18m)/sizeof(runList18m[0]); }
     else if (periodStr.Contains("18m") && subset == 1) { runList = runList18m1; nRuns = sizeof(runList18m1)/sizeof(runList18m1[0]); }
@@ -81,7 +95,8 @@ void runAnalysisONGRID_full(const char *fperiod = "18b", Int_t subset = 0, Bool_
     else if (periodStr.Contains("18o")) { runList = runList18o; nRuns = sizeof(runList18o)/sizeof(runList18o[0]); }
     else if (periodStr.Contains("18p")) { runList = runList18p; nRuns = sizeof(runList18p)/sizeof(runList18p[0]); }
 
-    else if (periodStr.Contains("17h")) { runList = runList17h; nRuns = sizeof(runList17h)/sizeof(runList17h[0]); }
+    else if (periodStr.Contains("17h") && subset <= 0) { runList = runList17h; nRuns = sizeof(runList17h)/sizeof(runList17h[0]); }
+    else if (periodStr.Contains("17h") && subset == 1) { runList = runList17hManuel; nRuns = sizeof(runList17hManuel)/sizeof(runList17hManuel[0]); }
     else if (periodStr.Contains("17i")) { runList = runList17i; nRuns = sizeof(runList17i)/sizeof(runList17i[0]); }
     else if (periodStr.Contains("17k")) { runList = runList17k; nRuns = sizeof(runList17k)/sizeof(runList17k[0]); }
     else if (periodStr.Contains("17l")) { runList = runList17l; nRuns = sizeof(runList17l)/sizeof(runList17l[0]); }
@@ -129,8 +144,8 @@ void runAnalysisONGRID_full(const char *fperiod = "18b", Int_t subset = 0, Bool_
     if (periodStr.Contains("16o")) { dataPattern = "/pass1/AOD208/*/AliAOD.root"; }
     if (periodStr.Contains("16p")) { dataPattern = "/pass1/AOD208/*/AliAOD.root"; }
 
-    TString workingDir = Form("LHC%sJpsiV0M_v2",fperiod);
-    if (subset > 0) workingDir = Form("LHC%s%dJpsiV0M_v2",fperiod,subset);
+    TString workingDir = Form("LHC%sJpsiV0M_vNov2",fperiod);
+    if (subset > 0) workingDir = Form("LHC%s%dJpsiV0M_vNov2",fperiod,subset);
 
     //___________EOF: Define the periods, the run lists and the path of the data
 
@@ -149,17 +164,13 @@ void runAnalysisONGRID_full(const char *fperiod = "18b", Int_t subset = 0, Bool_
     AliAODInputHandler *aodH = new AliAODInputHandler();
     mgr->SetInputEventHandler(aodH);
 
-    //loading and executing the task mult selection
-    printf("Loading multiplicity selection task...\n");
-    TMacro multSelection(gSystem->ExpandPathName("$ALICE_PHYSICS/OADB/COMMON/MULTIPLICITY/macros/AddTaskMultSelection.C"));
-    AliMultSelectionTask* multSelectionTask = reinterpret_cast<AliMultSelectionTask*>(multSelection.Exec());
-
-    //loading and executing the task physics selection
     printf("Loading physics selection task...\n");
-    //TMacro physSelection(gSystem->ExpandPathName("$ALICE_PHYSICS/OADB/macros/AddTaskPhysicsSelection.C"));
-    //AliPhysicsSelectionTask* physSelectionTask = reinterpret_cast<AliPhysicsSelectionTask*>(physSelection.Exec(kFALSE,kTRUE,0,kFALSE));
-    //AliPhysicsSelectionTask* physSelectionTask = AddTaskPhysicsSelection(kFALSE,kTRUE,0,kFALSE);
-    AliPhysicsSelectionTask *physseltask = reinterpret_cast<AliPhysicsSelectionTask *>(gInterpreter->ProcessLine(Form(".x %s", gSystem->ExpandPathName("$ALICE_PHYSICS/OADB/macros/AddTaskPhysicsSelection.C(kFALSE,kTRUE,0,kFALSE)"))));
+    //  gROOT->LoadMacro("$ALICE_PHYSICS/OADB/macros/AddTaskPhysicsSelection.C");
+    AliPhysicsSelectionTask* physSelTask = AddTaskPhysicsSelection(kFALSE,kTRUE,0,kFALSE);
+
+    printf("Loading multiplicity selection task...\n");
+    //  gROOT->LoadMacro("$ALICE_PHYSICS/OADB/COMMON/MULTIPLICITY/macros/AddTaskMultSelection.C");
+    AliMultSelectionTask * multTask = AddTaskMultSelection(kFALSE); // user mode:
 
     // compile the class and load the add task macro
     // here we have to differentiate between using the just-in-time compiler
@@ -239,7 +250,7 @@ void runAnalysisONGRID_full(const char *fperiod = "18b", Int_t subset = 0, Bool_
         // after re-running the jobs in SetRunMode("terminate")
         // (see below) mode, set SetMergeViaJDL(kFALSE)
         // to collect final results
-        alienHandler->SetMaxMergeStages(1);
+        alienHandler->SetMaxMergeStages(2);//alienHandler->SetMaxMergeStages(1);
         //alienHandler->SetMergeViaJDL(kTRUE); //do not retrieve final merged output
         //alienHandler->SetMergeViaJDL(kFALSE);  //retrieve final merged output
 

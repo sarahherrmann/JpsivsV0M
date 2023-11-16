@@ -3,7 +3,7 @@ int colors[3]={kRed, kBlue, kMagenta};
 void deriveResults(const char *inputFile = "../fitJpsi/FitResults_18d.root")
 {
 
-
+  gStyle->SetOptStat("");
   TFile* inputf = TFile::Open(inputFile,"READ");
 
   TH1F* hV0CMultCorr= (TH1F*)inputf->Get("hV0CMultCorr");
@@ -118,13 +118,16 @@ void deriveResults(const char *inputFile = "../fitJpsi/FitResults_18d.root")
   axes->GetXaxis()->SetTitleOffset(1.2);
 
 
-  TCanvas* canvasResult = new TCanvas("canvasResult", "canvasResult", 800, 600);
+  TCanvas* canvasResult = new TCanvas("canvasResult", "canvasResult",0,53,800,600);
+  canvasResult->Range(-0.8708919,-1.408696,7.870892,9.841304);
   canvasResult->SetGrid();
+  canvasResult->SetTopMargin(0.07478261);
+  canvasResult->SetBottomMargin(0.1252174);
 
   axes->DrawCopy();
 
-  TLegend *legend=new TLegend(0.6,0.65,0.88,0.85);
-
+  TLegend *legend=new TLegend(0.1453634,0.6747826,0.4260652,0.8747826,NULL,"brNDC");
+  legend->SetBorderSize(0);
 
   for (int iresult=0; iresult<nBinsPt; iresult++)
   {

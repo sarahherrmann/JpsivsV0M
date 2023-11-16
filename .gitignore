@@ -13,6 +13,8 @@ myTask_merge.C
 .DS_Store
 fitJpsi/analyzeOfLucrezia.C
 fitJpsi/exampleFit.C
+fitJpsi/fitJpsi_v2.C
+fitJpsi/fitJpsi_sys_TESTBKG.C
 fitJpsi/testProjection.C
 fitJpsiBKP/
 fitJpsiBKP/*
